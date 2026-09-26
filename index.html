@@ -1,0 +1,2511 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>PlateFlow - Food Orders, Menu, Clients, Expenses & Trends</title>
+  <meta name="theme-color" content="#2563EB">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="PlateFlow">
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png">
+  <link rel="apple-touch-icon" sizes="192x192" href="icon-192.png">
+  <link rel="apple-touch-icon" sizes="512x512" href="icon-512.png">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%232563EB'><path d='M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.4z'/></svg>">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- Firebase SDK for Real-time Cloud Sync -->
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+  <style>
+    body {
+      -webkit-tap-highlight-color: transparent;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+    .safe-bottom {
+      padding-bottom: calc(env(safe-area-inset-bottom, 16px) + 64px);
+    }
+    .scrollbar-none::-webkit-scrollbar {
+      display: none;
+    }
+    .scrollbar-none {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 antialiased min-h-screen flex flex-col selection:bg-blue-100 selection:text-blue-800">
+
+  <!-- TOP APP BAR -->
+  <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-xs">
+    <div class="max-w-3xl mx-auto px-4 py-2.5 flex items-center justify-between gap-2">
+      <!-- App Brand & Title -->
+      <div class="flex items-center space-x-2.5 min-w-0">
+        <div class="w-9 h-9 bg-gradient-to-br from-blue-600 to-indigo-700 rounded-xl flex items-center justify-center text-white font-black text-sm shadow-sm flex-shrink-0">
+          PF
+        </div>
+        <div class="min-w-0">
+          <div class="flex items-center gap-1.5">
+            <h1 class="text-sm font-bold text-slate-900 leading-none">PlateFlow</h1>
+            <span id="header-page-badge" class="bg-blue-50 text-blue-700 text-[10px] font-bold px-1.5 py-0.5 rounded border border-blue-200">Orders</span>
+          </div>
+          <p id="top-date-indicator" class="text-xs text-blue-600 font-semibold truncate mt-0.5"></p>
+        </div>
+      </div>
+
+      <!-- Desktop Nav Pills (hidden on mobile, shown on md+) -->
+      <nav class="hidden md:flex items-center space-x-1 bg-slate-100 p-1 rounded-xl text-xs font-semibold text-slate-600">
+        <button onclick="switchTab('orders')" id="desk-nav-orders" class="px-3 py-1.5 rounded-lg transition bg-white text-blue-700 shadow-2xs font-bold">Orders</button>
+        <button onclick="switchTab('menu')" id="desk-nav-menu" class="px-3 py-1.5 rounded-lg transition hover:text-slate-900">Menu</button>
+        <button onclick="switchTab('clients')" id="desk-nav-clients" class="px-3 py-1.5 rounded-lg transition hover:text-slate-900">Clients</button>
+        <button onclick="switchTab('expenses')" id="desk-nav-expenses" class="px-3 py-1.5 rounded-lg transition hover:text-slate-900">Expenses</button>
+        <button onclick="switchTab('trends')" id="desk-nav-trends" class="px-3 py-1.5 rounded-lg transition hover:text-slate-900">Trends</button>
+      </nav>
+
+      <!-- Cloud Sync Status, Install App & Contextual Action Button -->
+      <div class="flex items-center gap-1.5">
+        <button onclick="openInstallModal()" id="install-app-btn" class="bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 text-indigo-700 text-xs font-bold px-2.5 py-2 rounded-xl flex items-center gap-1.5 transition active:scale-95 shadow-2xs" title="Install App to Home Screen">
+          <i data-lucide="smartphone" class="w-3.5 h-3.5"></i>
+          <span class="text-[11px] font-bold hidden sm:inline">Install</span>
+        </button>
+        <button onclick="openCloudModal()" id="cloud-sync-btn" class="bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-700 text-xs font-semibold px-2.5 py-2 rounded-xl flex items-center gap-1.5 transition active:scale-95 shadow-2xs" title="Cloud Sync Settings">
+          <span id="cloud-status-indicator" class="w-2 h-2 rounded-full bg-slate-400"></span>
+          <i data-lucide="cloud" class="w-3.5 h-3.5 text-slate-600"></i>
+          <span id="cloud-status-text" class="text-[11px] font-bold hidden sm:inline">Sync</span>
+        </button>
+        <button id="header-action-btn" onclick="handleHeaderAction()" class="bg-blue-600 hover:bg-blue-700 active:scale-95 text-white font-semibold text-xs px-3 py-2 rounded-xl flex items-center space-x-1.5 shadow-sm transition">
+          <i id="header-action-icon" data-lucide="plus" class="w-4 h-4"></i>
+          <span id="header-action-label">New Order</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- DATE NAVIGATOR (Visible primarily for Orders view) -->
+    <div id="date-navigator-bar" class="bg-slate-50/90 border-t border-slate-100 px-4 py-2">
+      <div class="max-w-3xl mx-auto flex items-center justify-between gap-2">
+        <button onclick="changeDay(-1)" class="p-1.5 text-slate-600 hover:bg-slate-200 rounded-lg transition active:scale-90" title="Previous Day">
+          <i data-lucide="chevron-left" class="w-5 h-5"></i>
+        </button>
+
+        <div onclick="document.getElementById('date-picker-input').showPicker()" class="flex-1 text-center bg-white border border-slate-200 py-1.5 px-3 rounded-lg shadow-2xs cursor-pointer hover:border-blue-400 transition flex items-center justify-center gap-1.5">
+          <i data-lucide="calendar" class="w-4 h-4 text-blue-600"></i>
+          <span id="date-display-label" class="text-xs font-bold text-slate-700">Today</span>
+          <input type="date" id="date-picker-input" class="sr-only" onchange="onDatePicked(this.value)">
+        </div>
+
+        <button onclick="changeDay(1)" class="p-1.5 text-slate-600 hover:bg-slate-200 rounded-lg transition active:scale-90" title="Next Day">
+          <i data-lucide="chevron-right" class="w-5 h-5"></i>
+        </button>
+        <button onclick="setToday()" class="text-xs font-semibold text-blue-600 hover:bg-blue-50 px-2.5 py-1.5 rounded-lg border border-blue-200 transition">
+          Today
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- MAIN SCROLLABLE CONTENT AREA -->
+  <main class="flex-1 max-w-3xl w-full mx-auto p-4 safe-bottom">
+
+    <!-- ========================================== -->
+    <!-- 1. ORDERS TAB CONTENT                      -->
+    <!-- ========================================== -->
+    <section id="tab-orders" class="space-y-4">
+      <!-- SUMMARY METRICS -->
+      <div class="grid grid-cols-4 gap-2">
+        <div class="bg-white p-2.5 rounded-xl border border-slate-200 shadow-2xs text-center">
+          <span class="text-[10px] uppercase font-bold text-slate-400 block">Plates</span>
+          <span id="stat-plates" class="text-base font-extrabold text-blue-600">0</span>
+        </div>
+        <div class="bg-white p-2.5 rounded-xl border border-slate-200 shadow-2xs text-center">
+          <span class="text-[10px] uppercase font-bold text-slate-400 block">Total</span>
+          <span id="stat-total" class="text-xs font-bold text-slate-700">₹0</span>
+        </div>
+        <div class="bg-white p-2.5 rounded-xl border border-slate-200 shadow-2xs text-center">
+          <span class="text-[10px] uppercase font-bold text-slate-400 block">Collected</span>
+          <span id="stat-collected" class="text-xs font-bold text-emerald-600">₹0</span>
+        </div>
+        <div class="bg-white p-2.5 rounded-xl border border-slate-200 shadow-2xs text-center">
+          <span class="text-[10px] uppercase font-bold text-slate-400 block">Due</span>
+          <span id="stat-due" class="text-xs font-bold text-rose-600">₹0</span>
+        </div>
+      </div>
+
+      <!-- SEARCH & FILTER -->
+      <div class="relative">
+        <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3 top-3"></i>
+        <input type="text" id="search-input" oninput="renderOrders()" placeholder="Search client name, item, address..." class="w-full bg-white border border-slate-200 rounded-xl pl-9 pr-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-2xs">
+      </div>
+
+      <!-- ORDERS LIST (Single row layout per user request) -->
+      <div>
+        <div class="flex items-center justify-between mb-2 px-1">
+          <h2 class="text-xs font-bold uppercase tracking-wider text-slate-500">Orders for this Day</h2>
+          <span id="order-count-badge" class="text-[11px] font-semibold text-slate-500">0 orders</span>
+        </div>
+
+        <div id="orders-container" class="space-y-2">
+          <!-- Injected dynamically: Client name | address | item | Plates in a single row -->
+        </div>
+
+        <!-- Empty state -->
+        <div id="empty-state" class="hidden text-center py-12 px-4 bg-white rounded-2xl border border-slate-200">
+          <div class="w-12 h-12 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-3">
+            <i data-lucide="utensils" class="w-6 h-6"></i>
+          </div>
+          <h3 class="text-sm font-bold text-slate-700">No orders for this date</h3>
+          <p class="text-xs text-slate-400 mt-1 max-w-xs mx-auto">Click "New Order" to log client plates, address, and payments.</p>
+          <button onclick="openNewOrderModal()" class="mt-4 bg-blue-600 text-white font-semibold text-xs px-4 py-2 rounded-xl inline-flex items-center gap-1.5 shadow-sm">
+            <i data-lucide="plus" class="w-4 h-4"></i> Add Order
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================== -->
+    <!-- 2. MENU TAB CONTENT                        -->
+    <!-- ========================================== -->
+    <section id="tab-menu" class="hidden space-y-4">
+      <!-- Banner Card -->
+      <div class="bg-gradient-to-r from-amber-500/10 via-orange-500/10 to-amber-500/5 border border-amber-200/80 rounded-2xl p-4 flex items-center justify-between">
+        <div>
+          <h2 class="text-sm font-bold text-amber-900">Menu & Dish Catalog</h2>
+          <p class="text-xs text-amber-700 mt-0.5">Dishes configured here auto-fill pricing when creating orders.</p>
+        </div>
+        <span id="menu-dish-count-badge" class="bg-amber-600 text-white text-xs font-bold px-2.5 py-1 rounded-xl shadow-2xs">0 dishes</span>
+      </div>
+
+      <!-- Menu Search & Filter -->
+      <div class="flex flex-col gap-2">
+        <div class="relative">
+          <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3 top-3"></i>
+          <input type="text" id="menu-search-input" oninput="renderMenu()" placeholder="Search dishes (e.g., Biryani, Chicken, Rice)..." class="w-full bg-white border border-slate-200 rounded-xl pl-9 pr-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-amber-500 shadow-2xs">
+        </div>
+
+        <!-- Category Pills -->
+        <div class="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none text-xs">
+          <button onclick="setMenuCategoryFilter('all')" id="menu-cat-all" class="menu-cat-btn px-3 py-1.5 rounded-full font-bold bg-amber-600 text-white shadow-2xs whitespace-nowrap">All</button>
+          <button onclick="setMenuCategoryFilter('Main Course')" id="menu-cat-Main Course" class="menu-cat-btn px-3 py-1.5 rounded-full font-semibold bg-white border border-slate-200 text-slate-600 hover:bg-slate-100 whitespace-nowrap">Main Course</button>
+          <button onclick="setMenuCategoryFilter('Biryani')" id="menu-cat-Biryani" class="menu-cat-btn px-3 py-1.5 rounded-full font-semibold bg-white border border-slate-200 text-slate-600 hover:bg-slate-100 whitespace-nowrap">Biryani</button>
+          <button onclick="setMenuCategoryFilter('Starters')" id="menu-cat-Starters" class="menu-cat-btn px-3 py-1.5 rounded-full font-semibold bg-white border border-slate-200 text-slate-600 hover:bg-slate-100 whitespace-nowrap">Starters</button>
+          <button onclick="setMenuCategoryFilter('Breads & Rice')" id="menu-cat-Breads & Rice" class="menu-cat-btn px-3 py-1.5 rounded-full font-semibold bg-white border border-slate-200 text-slate-600 hover:bg-slate-100 whitespace-nowrap">Breads & Rice</button>
+          <button onclick="setMenuCategoryFilter('Desserts')" id="menu-cat-Desserts" class="menu-cat-btn px-3 py-1.5 rounded-full font-semibold bg-white border border-slate-200 text-slate-600 hover:bg-slate-100 whitespace-nowrap">Desserts</button>
+        </div>
+      </div>
+
+      <!-- Menu Grid -->
+      <div id="menu-container" class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <!-- Rendered dynamically -->
+      </div>
+
+      <div id="menu-empty-state" class="hidden text-center py-12 px-4 bg-white rounded-2xl border border-slate-200">
+        <div class="w-12 h-12 bg-amber-50 text-amber-600 rounded-full flex items-center justify-center mx-auto mb-3">
+          <i data-lucide="chef-hat" class="w-6 h-6"></i>
+        </div>
+        <h3 class="text-sm font-bold text-slate-700">No dishes found</h3>
+        <p class="text-xs text-slate-400 mt-1 max-w-xs mx-auto">Add items to your catalog so staff can pick them quickly during order creation.</p>
+        <button onclick="openMenuModal()" class="mt-4 bg-amber-600 text-white font-semibold text-xs px-4 py-2 rounded-xl inline-flex items-center gap-1.5 shadow-sm">
+          <i data-lucide="plus" class="w-4 h-4"></i> Add Dish
+        </button>
+      </div>
+    </section>
+
+    <!-- ========================================== -->
+    <!-- 3. CLIENTS TAB CONTENT                     -->
+    <!-- ========================================== -->
+    <section id="tab-clients" class="hidden space-y-4">
+      <!-- Clients Overview Card -->
+      <div class="grid grid-cols-3 gap-2">
+        <div class="bg-white p-3 rounded-xl border border-slate-200 shadow-2xs text-center">
+          <span class="text-[10px] uppercase font-bold text-slate-400 block">Total Clients</span>
+          <span id="client-stat-count" class="text-base font-extrabold text-indigo-600">0</span>
+        </div>
+        <div class="bg-white p-3 rounded-xl border border-slate-200 shadow-2xs text-center">
+          <span class="text-[10px] uppercase font-bold text-slate-400 block">Orders Placed</span>
+          <span id="client-stat-orders" class="text-base font-extrabold text-blue-600">0</span>
+        </div>
+        <div class="bg-white p-3 rounded-xl border border-slate-200 shadow-2xs text-center">
+          <span class="text-[10px] uppercase font-bold text-slate-400 block">Outstanding</span>
+          <span id="client-stat-due" class="text-base font-extrabold text-rose-600">₹0</span>
+        </div>
+      </div>
+
+      <!-- Clients Search -->
+      <div class="relative">
+        <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3 top-3"></i>
+        <input type="text" id="client-search-input" oninput="renderClients()" placeholder="Search clients by name, phone, address..." class="w-full bg-white border border-slate-200 rounded-xl pl-9 pr-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500 shadow-2xs">
+      </div>
+
+      <!-- Clients List -->
+      <div id="clients-container" class="space-y-2.5">
+        <!-- Rendered dynamically -->
+      </div>
+
+      <div id="clients-empty-state" class="hidden text-center py-12 px-4 bg-white rounded-2xl border border-slate-200">
+        <div class="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-full flex items-center justify-center mx-auto mb-3">
+          <i data-lucide="users" class="w-6 h-6"></i>
+        </div>
+        <h3 class="text-sm font-bold text-slate-700">No clients found</h3>
+        <p class="text-xs text-slate-400 mt-1 max-w-xs mx-auto">Add regular customers with address and phone for quick 1-tap orders.</p>
+        <button onclick="openClientModal()" class="mt-4 bg-indigo-600 text-white font-semibold text-xs px-4 py-2 rounded-xl inline-flex items-center gap-1.5 shadow-sm">
+          <i data-lucide="user-plus" class="w-4 h-4"></i> Add Client
+        </button>
+      </div>
+    </section>
+
+    <!-- ========================================== -->
+    <!-- 4. EXPENSES TAB CONTENT                    -->
+    <!-- ========================================== -->
+    <section id="tab-expenses" class="hidden space-y-4">
+      <!-- Expense Summary Card -->
+      <div class="bg-gradient-to-r from-rose-500/10 via-pink-500/10 to-rose-500/5 border border-rose-200/80 rounded-2xl p-4 flex items-center justify-between">
+        <div>
+          <span class="text-[11px] font-bold uppercase tracking-wider text-rose-600">Total Spent</span>
+          <div id="expense-total-display" class="text-xl font-extrabold text-slate-900 mt-0.5">₹0</div>
+          <span id="expense-count-badge" class="text-xs text-slate-500">0 expenses logged</span>
+        </div>
+        <button onclick="openExpenseModal()" class="bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold px-3 py-2 rounded-xl flex items-center gap-1.5 shadow-2xs transition">
+          <i data-lucide="plus" class="w-4 h-4"></i>
+          <span>Add Expense</span>
+        </button>
+      </div>
+
+      <!-- Expense Category Filters -->
+      <div class="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none text-xs">
+        <button onclick="setExpenseCategoryFilter('all')" id="exp-cat-all" class="exp-cat-btn px-3 py-1.5 rounded-full font-bold bg-rose-600 text-white shadow-2xs whitespace-nowrap">All</button>
+        <button onclick="setExpenseCategoryFilter('Ingredients')" id="exp-cat-Ingredients" class="exp-cat-btn px-3 py-1.5 rounded-full font-semibold bg-white border border-slate-200 text-slate-600 hover:bg-slate-100 whitespace-nowrap">Ingredients</button>
+        <button onclick="setExpenseCategoryFilter('Fuel & Delivery')" id="exp-cat-Fuel & Delivery" class="exp-cat-btn px-3 py-1.5 rounded-full font-semibold bg-white border border-slate-200 text-slate-600 hover:bg-slate-100 whitespace-nowrap">Fuel & Delivery</button>
+        <button onclick="setExpenseCategoryFilter('Labor')" id="exp-cat-Labor" class="exp-cat-btn px-3 py-1.5 rounded-full font-semibold bg-white border border-slate-200 text-slate-600 hover:bg-slate-100 whitespace-nowrap">Labor</button>
+        <button onclick="setExpenseCategoryFilter('Utensils & Packaging')" id="exp-cat-Utensils & Packaging" class="exp-cat-btn px-3 py-1.5 rounded-full font-semibold bg-white border border-slate-200 text-slate-600 hover:bg-slate-100 whitespace-nowrap">Utensils & Packaging</button>
+        <button onclick="setExpenseCategoryFilter('Utilities')" id="exp-cat-Utilities" class="exp-cat-btn px-3 py-1.5 rounded-full font-semibold bg-white border border-slate-200 text-slate-600 hover:bg-slate-100 whitespace-nowrap">Utilities</button>
+        <button onclick="setExpenseCategoryFilter('Miscellaneous')" id="exp-cat-Miscellaneous" class="exp-cat-btn px-3 py-1.5 rounded-full font-semibold bg-white border border-slate-200 text-slate-600 hover:bg-slate-100 whitespace-nowrap">Miscellaneous</button>
+      </div>
+
+      <!-- Expense List -->
+      <div id="expenses-container" class="space-y-2">
+        <!-- Rendered dynamically -->
+      </div>
+
+      <div id="expenses-empty-state" class="hidden text-center py-12 px-4 bg-white rounded-2xl border border-slate-200">
+        <div class="w-12 h-12 bg-rose-50 text-rose-600 rounded-full flex items-center justify-center mx-auto mb-3">
+          <i data-lucide="receipt" class="w-6 h-6"></i>
+        </div>
+        <h3 class="text-sm font-bold text-slate-700">No expenses recorded</h3>
+        <p class="text-xs text-slate-400 mt-1 max-w-xs mx-auto">Track raw materials, packaging, staff wages, and fuel to see real profit in Trends.</p>
+        <button onclick="openExpenseModal()" class="mt-4 bg-rose-600 text-white font-semibold text-xs px-4 py-2 rounded-xl inline-flex items-center gap-1.5 shadow-sm">
+          <i data-lucide="plus" class="w-4 h-4"></i> Add Expense
+        </button>
+      </div>
+    </section>
+
+    <!-- ========================================== -->
+    <!-- 5. FINANCIAL TRENDS TAB CONTENT            -->
+    <!-- ========================================== -->
+    <section id="tab-trends" class="hidden space-y-4">
+      <!-- Financial Performance Card -->
+      <div class="bg-gradient-to-br from-slate-900 to-indigo-950 text-white rounded-2xl p-5 shadow-sm relative overflow-hidden">
+        <div class="flex items-center justify-between mb-4">
+          <div>
+            <span class="text-[11px] font-bold uppercase tracking-wider text-indigo-300">Financial Overview</span>
+            <h3 class="text-lg font-black mt-0.5">Business Performance</h3>
+          </div>
+          <button onclick="shareFinancialReport()" class="bg-white/10 hover:bg-white/20 text-white text-xs font-semibold px-3 py-1.5 rounded-xl flex items-center gap-1.5 border border-white/20 transition active:scale-95">
+            <i data-lucide="share-2" class="w-3.5 h-3.5"></i>
+            <span>Share Report</span>
+          </button>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3 mb-4">
+          <div class="bg-white/10 rounded-xl p-3 border border-white/10">
+            <span class="text-[10px] uppercase font-bold text-slate-300 block">Gross Revenue</span>
+            <span id="trend-revenue" class="text-base font-extrabold text-white">₹0</span>
+          </div>
+          <div class="bg-white/10 rounded-xl p-3 border border-white/10">
+            <span class="text-[10px] uppercase font-bold text-slate-300 block">Total Expenses</span>
+            <span id="trend-expenses" class="text-base font-extrabold text-rose-300">₹0</span>
+          </div>
+        </div>
+
+        <!-- Net Profit Highlight -->
+        <div class="bg-white/15 rounded-xl p-3.5 border border-white/15 flex items-center justify-between">
+          <div>
+            <span class="text-[11px] font-semibold text-indigo-200">Net Profit</span>
+            <div id="trend-profit" class="text-xl font-black text-emerald-400">₹0</div>
+          </div>
+          <div class="text-right">
+            <span class="text-[11px] font-semibold text-indigo-200">Profit Margin</span>
+            <div id="trend-margin" class="text-sm font-bold text-emerald-300">0%</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Additional Metrics Grid -->
+      <div class="grid grid-cols-3 gap-2">
+        <div class="bg-white p-3 rounded-xl border border-slate-200 shadow-2xs text-center">
+          <span class="text-[10px] uppercase font-bold text-slate-400 block">Plates Sold</span>
+          <span id="trend-plates" class="text-base font-extrabold text-blue-600">0</span>
+        </div>
+        <div class="bg-white p-3 rounded-xl border border-slate-200 shadow-2xs text-center">
+          <span class="text-[10px] uppercase font-bold text-slate-400 block">Collected Cash</span>
+          <span id="trend-collected" class="text-base font-extrabold text-emerald-600">₹0</span>
+        </div>
+        <div class="bg-white p-3 rounded-xl border border-slate-200 shadow-2xs text-center">
+          <span class="text-[10px] uppercase font-bold text-slate-400 block">Pending Due</span>
+          <span id="trend-due" class="text-base font-extrabold text-rose-600">₹0</span>
+        </div>
+      </div>
+
+      <!-- Last 7 Days Daily Performance (SVG Chart) -->
+      <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs">
+        <div class="flex items-center justify-between mb-3">
+          <h4 class="text-xs font-bold uppercase tracking-wider text-slate-600">7-Day Revenue & Expense Activity</h4>
+          <div class="flex items-center gap-3 text-[10px] font-bold">
+            <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 bg-blue-600 rounded-xs"></span> Revenue</span>
+            <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 bg-rose-500 rounded-xs"></span> Expense</span>
+          </div>
+        </div>
+        <div id="trend-chart-container" class="space-y-2 pt-1">
+          <!-- Rendered 7-day bars -->
+        </div>
+      </div>
+
+      <!-- Expense Categories Breakdown -->
+      <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs">
+        <h4 class="text-xs font-bold uppercase tracking-wider text-slate-600 mb-3">Expense Breakdown by Category</h4>
+        <div id="trend-category-bars" class="space-y-3">
+          <!-- Rendered category progress bars -->
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ========================================== -->
+  <!-- BOTTOM NAVIGATION BAR (Mobile Native feel)  -->
+  <!-- ========================================== -->
+  <nav class="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-slate-200 z-40 shadow-lg">
+    <div class="max-w-md mx-auto grid grid-cols-5 py-1 px-1">
+      <!-- Orders Tab -->
+      <button onclick="switchTab('orders')" id="nav-orders" class="nav-item flex flex-col items-center justify-center py-1.5 px-1 rounded-xl text-blue-600 font-bold transition active:scale-95">
+        <i data-lucide="clipboard-list" class="w-5 h-5 mb-0.5"></i>
+        <span class="text-[10px]">Orders</span>
+      </button>
+
+      <!-- Menu Tab -->
+      <button onclick="switchTab('menu')" id="nav-menu" class="nav-item flex flex-col items-center justify-center py-1.5 px-1 rounded-xl text-slate-400 font-medium hover:text-slate-600 transition active:scale-95">
+        <i data-lucide="utensils-crossed" class="w-5 h-5 mb-0.5"></i>
+        <span class="text-[10px]">Menu</span>
+      </button>
+
+      <!-- Clients Tab -->
+      <button onclick="switchTab('clients')" id="nav-clients" class="nav-item flex flex-col items-center justify-center py-1.5 px-1 rounded-xl text-slate-400 font-medium hover:text-slate-600 transition active:scale-95">
+        <i data-lucide="users" class="w-5 h-5 mb-0.5"></i>
+        <span class="text-[10px]">Clients</span>
+      </button>
+
+      <!-- Expenses Tab -->
+      <button onclick="switchTab('expenses')" id="nav-expenses" class="nav-item flex flex-col items-center justify-center py-1.5 px-1 rounded-xl text-slate-400 font-medium hover:text-slate-600 transition active:scale-95">
+        <i data-lucide="receipt" class="w-5 h-5 mb-0.5"></i>
+        <span class="text-[10px]">Expenses</span>
+      </button>
+
+      <!-- Trends Tab -->
+      <button onclick="switchTab('trends')" id="nav-trends" class="nav-item flex flex-col items-center justify-center py-1.5 px-1 rounded-xl text-slate-400 font-medium hover:text-slate-600 transition active:scale-95">
+        <i data-lucide="trending-up" class="w-5 h-5 mb-0.5"></i>
+        <span class="text-[10px]">Trends</span>
+      </button>
+    </div>
+  </nav>
+
+  <!-- ========================================== -->
+  <!-- MODAL: ADD / EDIT ORDER                    -->
+  <!-- ========================================== -->
+  <div id="order-modal" class="fixed inset-0 bg-black/50 z-50 hidden flex items-end sm:items-center justify-center p-0 sm:p-4 backdrop-blur-2xs">
+    <div class="bg-white w-full max-w-lg rounded-t-2xl sm:rounded-2xl p-5 shadow-2xl max-h-[90vh] overflow-y-auto">
+      <div class="flex items-center justify-between border-b pb-3 mb-4">
+        <h3 id="modal-title" class="text-base font-bold text-slate-800">New Order</h3>
+        <button onclick="closeModal()" class="p-1 rounded-lg text-slate-400 hover:text-slate-600">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <form id="order-form" onsubmit="saveOrder(event)" class="space-y-3.5">
+        <input type="hidden" id="order-id">
+
+        <!-- Client Name with Quick Fill from Clients -->
+        <div>
+          <label class="block text-xs font-bold text-slate-600 mb-1">Client Name *</label>
+          <div class="relative">
+            <input type="text" id="client-name" required list="client-datalist" placeholder="e.g. John Doe" oninput="onClientNameInput(this.value)" class="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
+            <datalist id="client-datalist">
+              <!-- Injected from clients -->
+            </datalist>
+          </div>
+          <span class="text-[10px] text-slate-400 mt-0.5 block">Typing a registered client auto-fills phone & address</span>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-bold text-slate-600 mb-1">Phone Number</label>
+            <input type="tel" id="client-phone" placeholder="e.g. +91 9876543210" class="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-600 mb-1">Item / Dish Ordered</label>
+            <input type="text" id="plate-item" list="menu-datalist" placeholder="e.g. Chicken Biryani" onchange="onMenuItemSelected(this.value)" class="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
+            <datalist id="menu-datalist">
+              <!-- Injected from menu items -->
+            </datalist>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-600 mb-1">Delivery / Service Address</label>
+          <textarea id="client-address" rows="2" placeholder="e.g. Flat 402, Sunshine Heights, Mumbai" class="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"></textarea>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-bold text-slate-600 mb-1">Number of Plates *</label>
+            <input type="number" id="plate-count" required min="1" value="1" oninput="calcTotals()" class="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-600 mb-1">Price per Plate (₹) *</label>
+            <input type="number" id="plate-price" required min="0" step="0.5" value="280" oninput="calcTotals()" class="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
+          </div>
+        </div>
+
+        <!-- Calculated Summary Box -->
+        <div class="bg-blue-50/70 border border-blue-200/80 rounded-xl p-3 flex justify-between items-center text-xs">
+          <div>
+            <span class="text-slate-500 block">Total Order Value:</span>
+            <span id="order-calc-total" class="text-sm font-extrabold text-blue-700">₹280.00</span>
+          </div>
+          <div class="text-right">
+            <span class="text-slate-500 block">Balance Due:</span>
+            <span id="order-calc-due" class="text-sm font-extrabold text-rose-600">₹280.00</span>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-600 mb-1">Amount Paid (₹)</label>
+          <input type="number" id="amount-paid" min="0" step="0.5" value="0" oninput="calcTotals()" class="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
+        </div>
+
+        <div class="pt-2 flex gap-3">
+          <button type="button" onclick="closeModal()" class="flex-1 py-2.5 border border-slate-300 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-50 transition">
+            Cancel
+          </button>
+          <button type="submit" class="flex-1 py-2.5 bg-blue-600 text-white rounded-xl text-xs font-bold hover:bg-blue-700 shadow-sm transition">
+            Save Order
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- MODAL: ORDER QUICK DETAILS                 -->
+  <!-- ========================================== -->
+  <div id="details-modal" class="fixed inset-0 bg-black/50 z-50 hidden flex items-end sm:items-center justify-center p-0 sm:p-4 backdrop-blur-2xs">
+    <div class="bg-white w-full max-w-md rounded-t-2xl sm:rounded-2xl p-5 shadow-2xl">
+      <div class="flex items-center justify-between border-b pb-3 mb-4">
+        <div>
+          <h3 id="detail-client-name" class="text-base font-extrabold text-slate-900">Client Name</h3>
+          <p id="detail-item" class="text-xs text-blue-600 font-semibold mt-0.5">Item Name</p>
+        </div>
+        <button onclick="closeDetailsModal()" class="p-1 rounded-lg text-slate-400 hover:text-slate-600">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <div class="space-y-3 mb-5">
+        <div class="grid grid-cols-3 gap-2 text-center bg-slate-50 p-2.5 rounded-xl border border-slate-200">
+          <div>
+            <span class="text-[10px] uppercase font-bold text-slate-400 block">Quantity</span>
+            <span id="detail-plates" class="text-xs font-bold text-slate-800">0 Plates</span>
+          </div>
+          <div>
+            <span class="text-[10px] uppercase font-bold text-slate-400 block">Total</span>
+            <span id="detail-total" class="text-xs font-bold text-blue-600">₹0</span>
+          </div>
+          <div>
+            <span class="text-[10px] uppercase font-bold text-slate-400 block">Due</span>
+            <span id="detail-due" class="text-xs font-bold text-rose-600">₹0</span>
+          </div>
+        </div>
+
+        <div class="text-xs">
+          <span class="font-bold text-slate-500 block mb-0.5">Address:</span>
+          <p id="detail-address" class="text-slate-700 bg-slate-50 p-2 rounded-lg border border-slate-100">No address provided</p>
+        </div>
+
+        <!-- Action Row -->
+        <div class="grid grid-cols-2 gap-2 pt-1">
+          <a id="btn-call" href="#" class="flex items-center justify-center gap-1.5 py-2 px-3 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-xl text-xs font-bold border border-emerald-200 transition">
+            <i data-lucide="phone" class="w-4 h-4"></i> Call Client
+          </a>
+          <a id="btn-directions" href="#" target="_blank" class="flex items-center justify-center gap-1.5 py-2 px-3 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-xl text-xs font-bold border border-blue-200 transition">
+            <i data-lucide="map-pin" class="w-4 h-4"></i> Directions
+          </a>
+        </div>
+
+        <div class="grid grid-cols-2 gap-2">
+          <button id="btn-quick-pay" onclick="quickCollect()" class="flex items-center justify-center gap-1.5 py-2 px-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-2xs transition">
+            <i data-lucide="check-circle" class="w-4 h-4"></i> Mark Paid
+          </button>
+          <button onclick="shareReceipt()" class="flex items-center justify-center gap-1.5 py-2 px-3 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition">
+            <i data-lucide="share-2" class="w-4 h-4"></i> Share Receipt
+          </button>
+        </div>
+      </div>
+
+      <!-- Footer Buttons -->
+      <div class="flex items-center justify-between border-t pt-3 text-xs">
+        <button onclick="deleteCurrentOrder()" class="text-rose-600 hover:text-rose-700 font-semibold flex items-center gap-1 p-1">
+          <i data-lucide="trash-2" class="w-4 h-4"></i> Delete
+        </button>
+        <button onclick="editCurrentOrder()" class="text-blue-600 hover:text-blue-700 font-bold flex items-center gap-1 p-1">
+          <i data-lucide="edit-3" class="w-4 h-4"></i> Edit Order
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- MODAL: ADD / EDIT MENU ITEM                -->
+  <!-- ========================================== -->
+  <div id="menu-modal" class="fixed inset-0 bg-black/50 z-50 hidden flex items-end sm:items-center justify-center p-0 sm:p-4 backdrop-blur-2xs">
+    <div class="bg-white w-full max-w-md rounded-t-2xl sm:rounded-2xl p-5 shadow-2xl">
+      <div class="flex items-center justify-between border-b pb-3 mb-4">
+        <h3 id="menu-modal-title" class="text-base font-bold text-slate-800">Add Menu Dish</h3>
+        <button onclick="closeMenuModal()" class="p-1 rounded-lg text-slate-400 hover:text-slate-600">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <form id="menu-form" onsubmit="saveMenuItem(event)" class="space-y-3.5">
+        <input type="hidden" id="menu-item-id">
+
+        <div>
+          <label class="block text-xs font-bold text-slate-600 mb-1">Dish Name *</label>
+          <input type="text" id="menu-name" required placeholder="e.g. Mutton Biryani Special" class="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none">
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-bold text-slate-600 mb-1">Category *</label>
+            <select id="menu-category" required class="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none bg-white">
+              <option value="Main Course">Main Course</option>
+              <option value="Biryani">Biryani</option>
+              <option value="Starters">Starters</option>
+              <option value="Breads & Rice">Breads & Rice</option>
+              <option value="Desserts">Desserts</option>
+              <option value="Beverages">Beverages</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-600 mb-1">Price per Plate (₹) *</label>
+            <input type="number" id="menu-price" required min="0" step="0.5" placeholder="280" class="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none">
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-600 mb-1">Description / Ingredients</label>
+          <textarea id="menu-desc" rows="2" placeholder="e.g. Served with raita, salan, and gulab jamun" class="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none"></textarea>
+        </div>
+
+        <div class="pt-2 flex gap-3">
+          <button type="button" onclick="closeMenuModal()" class="flex-1 py-2.5 border border-slate-300 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-50 transition">
+            Cancel
+          </button>
+          <button type="submit" class="flex-1 py-2.5 bg-amber-600 text-white rounded-xl text-xs font-bold hover:bg-amber-700 shadow-sm transition">
+            Save Dish
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- MODAL: ADD / EDIT CLIENT                   -->
+  <!-- ========================================== -->
+  <div id="client-modal" class="fixed inset-0 bg-black/50 z-50 hidden flex items-end sm:items-center justify-center p-0 sm:p-4 backdrop-blur-2xs">
+    <div class="bg-white w-full max-w-md rounded-t-2xl sm:rounded-2xl p-5 shadow-2xl">
+      <div class="flex items-center justify-between border-b pb-3 mb-4">
+        <h3 id="client-modal-title" class="text-base font-bold text-slate-800">Add New Client</h3>
+        <button onclick="closeClientModal()" class="p-1 rounded-lg text-slate-400 hover:text-slate-600">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <form id="client-form" onsubmit="saveClient(event)" class="space-y-3.5">
+        <input type="hidden" id="client-modal-id">
+
+        <div>
+          <label class="block text-xs font-bold text-slate-600 mb-1">Client Full Name *</label>
+          <input type="text" id="client-modal-name" required placeholder="e.g. Ramesh Patel" class="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-600 mb-1">Phone Number</label>
+          <input type="tel" id="client-modal-phone" placeholder="e.g. +91 9876543210" class="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-600 mb-1">Default Delivery Address</label>
+          <textarea id="client-modal-address" rows="2" placeholder="e.g. Flat 12, Rose Villa, MG Road" class="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"></textarea>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-600 mb-1">Notes / Preferences</label>
+          <input type="text" id="client-modal-notes" placeholder="e.g. Prefers less spicy, weekend catering regular" class="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+        </div>
+
+        <div class="pt-2 flex gap-3">
+          <button type="button" onclick="closeClientModal()" class="flex-1 py-2.5 border border-slate-300 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-50 transition">
+            Cancel
+          </button>
+          <button type="submit" class="flex-1 py-2.5 bg-indigo-600 text-white rounded-xl text-xs font-bold hover:bg-indigo-700 shadow-sm transition">
+            Save Client
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- MODAL: ADD / EDIT EXPENSE                  -->
+  <!-- ========================================== -->
+  <div id="expense-modal" class="fixed inset-0 bg-black/50 z-50 hidden flex items-end sm:items-center justify-center p-0 sm:p-4 backdrop-blur-2xs">
+    <div class="bg-white w-full max-w-md rounded-t-2xl sm:rounded-2xl p-5 shadow-2xl">
+      <div class="flex items-center justify-between border-b pb-3 mb-4">
+        <h3 id="expense-modal-title" class="text-base font-bold text-slate-800">Add New Expense</h3>
+        <button onclick="closeExpenseModal()" class="p-1 rounded-lg text-slate-400 hover:text-slate-600">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <form id="expense-form" onsubmit="saveExpense(event)" class="space-y-3.5">
+        <input type="hidden" id="expense-modal-id">
+
+        <div>
+          <label class="block text-xs font-bold text-slate-600 mb-1">Expense Title / Item *</label>
+          <input type="text" id="expense-title" required placeholder="e.g. Basmati Rice 25kg & Spices" class="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-rose-500 focus:outline-none">
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-bold text-slate-600 mb-1">Category *</label>
+            <select id="expense-category" required class="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-rose-500 focus:outline-none bg-white">
+              <option value="Ingredients">Ingredients</option>
+              <option value="Fuel & Delivery">Fuel & Delivery</option>
+              <option value="Labor">Labor</option>
+              <option value="Utensils & Packaging">Utensils & Packaging</option>
+              <option value="Utilities">Utilities</option>
+              <option value="Miscellaneous">Miscellaneous</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-600 mb-1">Amount (₹) *</label>
+            <input type="number" id="expense-amount" required min="0" step="1" placeholder="1500" class="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-rose-500 focus:outline-none">
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-600 mb-1">Date *</label>
+          <input type="date" id="expense-date" required class="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-rose-500 focus:outline-none">
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-600 mb-1">Notes / Vendor</label>
+          <input type="text" id="expense-notes" placeholder="e.g. Wholesale market, bill #841" class="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-rose-500 focus:outline-none">
+        </div>
+
+        <div class="pt-2 flex gap-3">
+          <button type="button" onclick="closeExpenseModal()" class="flex-1 py-2.5 border border-slate-300 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-50 transition">
+            Cancel
+          </button>
+          <button type="submit" class="flex-1 py-2.5 bg-rose-600 text-white rounded-xl text-xs font-bold hover:bg-rose-700 shadow-sm transition">
+            Save Expense
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- MODAL: CLOUD SYNC SETTINGS                 -->
+  <!-- ========================================== -->
+  <div id="cloud-modal" class="fixed inset-0 bg-black/50 z-50 hidden flex items-end sm:items-center justify-center p-0 sm:p-4 backdrop-blur-2xs">
+    <div class="bg-white w-full max-w-lg rounded-t-2xl sm:rounded-2xl p-5 shadow-2xl max-h-[90vh] overflow-y-auto">
+      <div class="flex items-center justify-between border-b pb-3 mb-4">
+        <div class="flex items-center gap-2">
+          <div class="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center">
+            <i data-lucide="cloud" class="w-4 h-4"></i>
+          </div>
+          <div>
+            <h3 class="text-base font-bold text-slate-900">Multi-Device Live Sync</h3>
+            <p class="text-xs text-slate-500">Sync live orders & menu across multiple phones</p>
+          </div>
+        </div>
+        <button onclick="closeCloudModal()" class="p-1 rounded-lg text-slate-400 hover:text-slate-600">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <!-- Current Status Banner -->
+      <div id="cloud-banner" class="bg-slate-50 border border-slate-200 rounded-xl p-3 mb-4 flex items-center justify-between">
+        <div class="flex items-center gap-2.5">
+          <span id="cloud-banner-dot" class="w-3 h-3 rounded-full bg-slate-400"></span>
+          <div>
+            <div id="cloud-banner-title" class="text-xs font-bold text-slate-800">Local Mode (Offline)</div>
+            <div id="cloud-banner-sub" class="text-[11px] text-slate-500">Data is saved only on this phone. Connect Firebase to sync across devices in real time.</div>
+          </div>
+        </div>
+      </div>
+
+      <form id="cloud-form" onsubmit="saveCloudConfig(event)" class="space-y-4">
+        <!-- Store / Business Code -->
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-1">
+            Store / Business Sync Code *
+          </label>
+          <input type="text" id="cloud-store-id" required placeholder="e.g. my-catering-kitchen" class="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
+          <span class="text-[11px] text-slate-500 mt-1 block">
+            Enter this <strong>exact same code</strong> on all devices (cook, waiter, delivery, manager) to share the same live data.
+          </span>
+        </div>
+
+        <!-- Firebase Config JSON -->
+        <div>
+          <div class="flex items-center justify-between mb-1">
+            <label class="block text-xs font-bold text-slate-700">Firebase Configuration JSON / Snippet *</label>
+            <a href="https://console.firebase.google.com" target="_blank" class="text-[11px] text-blue-600 font-semibold hover:underline flex items-center gap-0.5">
+              <span>Open Firebase Console</span>
+              <i data-lucide="external-link" class="w-3 h-3"></i>
+            </a>
+          </div>
+          <textarea id="cloud-firebase-config" rows="6" required placeholder='Paste your Firebase config here, e.g.:
+{
+  "apiKey": "AIzaSy...",
+  "authDomain": "my-app.firebaseapp.com",
+  "projectId": "my-app",
+  "storageBucket": "my-app.appspot.com",
+  "messagingSenderId": "123456789",
+  "appId": "1:123456789:web:abcdef"
+}' class="w-full font-mono text-xs border border-slate-300 rounded-xl p-3 focus:ring-2 focus:ring-blue-500 focus:outline-none bg-slate-50/60"></textarea>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="space-y-2">
+          <div class="flex gap-2.5">
+            <button type="button" onclick="closeCloudModal()" class="flex-1 py-2.5 border border-slate-300 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-50 transition">
+              Cancel
+            </button>
+            <button type="submit" class="flex-1 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-sm transition">
+              Connect & Sync
+            </button>
+          </div>
+          <div id="cloud-active-actions" class="hidden flex gap-2 pt-2 border-t border-slate-100">
+            <button type="button" onclick="uploadLocalDataToCloud()" class="flex-1 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1">
+              <i data-lucide="upload-cloud" class="w-3.5 h-3.5"></i>
+              <span>Upload Local Data to Cloud</span>
+            </button>
+            <button type="button" onclick="disconnectCloud()" class="py-2 px-3 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-xl text-xs font-bold transition">
+              Disconnect
+            </button>
+          </div>
+        </div>
+      </form>
+
+      <!-- 4-step setup instructions -->
+      <div class="mt-5 border-t border-slate-200 pt-4">
+        <h4 class="text-xs font-extrabold text-slate-800 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+          <i data-lucide="help-circle" class="w-3.5 h-3.5 text-blue-600"></i>
+          <span>Free Firebase Setup (Takes 2 Minutes)</span>
+        </h4>
+        <ol class="text-xs text-slate-600 space-y-1.5 list-decimal list-inside leading-relaxed bg-slate-50 p-3 rounded-xl border border-slate-200/70">
+          <li>Visit <a href="https://console.firebase.google.com" target="_blank" class="text-blue-600 font-semibold underline">console.firebase.google.com</a> and click <strong>Create a project</strong> (100% Free Spark plan).</li>
+          <li>In left menu, click <strong>Build &rarr; Firestore Database</strong> &rarr; <strong>Create Database</strong> (start in <strong>Test mode</strong>).</li>
+          <li>In <strong>Project Overview</strong>, click the <strong>Web (&lt;/&gt;)</strong> icon to register a web app.</li>
+          <li>Copy the <code>firebaseConfig</code> object and paste it in the box above!</li>
+        </ol>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- MODAL: ADD TO HOME SCREEN / INSTALL APP    -->
+  <!-- ========================================== -->
+  <div id="install-modal" class="fixed inset-0 bg-black/50 z-50 hidden flex items-end sm:items-center justify-center p-0 sm:p-4 backdrop-blur-2xs">
+    <div class="bg-white w-full max-w-lg rounded-t-2xl sm:rounded-2xl p-5 shadow-2xl max-h-[90vh] overflow-y-auto">
+      <div class="flex items-center justify-between border-b pb-3 mb-4">
+        <div class="flex items-center gap-2.5">
+          <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-700 text-white flex items-center justify-center font-black text-sm shadow-sm">
+            PF
+          </div>
+          <div>
+            <h3 class="text-base font-bold text-slate-900">Install PlateFlow App</h3>
+            <p class="text-xs text-slate-500">Run full-screen like a native app on your phone</p>
+          </div>
+        </div>
+        <button onclick="closeInstallModal()" class="p-1 rounded-lg text-slate-400 hover:text-slate-600">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <!-- Android Direct One-Tap Install Button (shown when supported) -->
+      <div id="native-install-section" class="mb-4">
+        <button onclick="triggerPWAInstall()" class="w-full py-3 bg-blue-600 hover:bg-blue-700 active:scale-[0.99] text-white font-bold text-sm rounded-xl flex items-center justify-center gap-2 shadow-sm transition">
+          <i data-lucide="download" class="w-4 h-4"></i>
+          <span>Add to Home Screen Now</span>
+        </button>
+      </div>
+
+      <!-- Device Tabs Selector -->
+      <div class="grid grid-cols-2 gap-2 p-1 bg-slate-100 rounded-xl text-xs font-bold mb-4">
+        <button onclick="switchInstallTab('ios')" id="install-tab-ios" class="py-2 rounded-lg bg-white text-blue-700 shadow-2xs transition">
+          📱 iPhone / iPad (Safari)
+        </button>
+        <button onclick="switchInstallTab('android')" id="install-tab-android" class="py-2 rounded-lg text-slate-600 hover:text-slate-900 transition">
+          🤖 Android (Chrome)
+        </button>
+      </div>
+
+      <!-- iOS Instructions -->
+      <div id="install-guide-ios" class="space-y-3">
+        <div class="p-3 bg-blue-50/60 rounded-xl border border-blue-100 text-xs text-slate-700 space-y-2.5">
+          <div class="flex items-start gap-2.5">
+            <div class="w-6 h-6 rounded-full bg-blue-600 text-white font-black text-xs flex items-center justify-center flex-shrink-0 mt-0.5">1</div>
+            <div>
+              <span class="font-bold text-slate-900">Open Safari</span>
+              <p class="text-slate-500">Make sure this link is open in <strong>Safari</strong> (Apple only allows adding to home screen through Safari).</p>
+            </div>
+          </div>
+
+          <div class="flex items-start gap-2.5">
+            <div class="w-6 h-6 rounded-full bg-blue-600 text-white font-black text-xs flex items-center justify-center flex-shrink-0 mt-0.5">2</div>
+            <div>
+              <span class="font-bold text-slate-900">Tap the Share Button</span>
+              <p class="text-slate-500">Tap the <strong class="text-blue-700">Share</strong> icon (the square with an arrow pointing up <span class="inline-block px-1 bg-white border border-slate-300 rounded text-[11px]">↑</span> at the bottom bar of your screen).</p>
+            </div>
+          </div>
+
+          <div class="flex items-start gap-2.5">
+            <div class="w-6 h-6 rounded-full bg-blue-600 text-white font-black text-xs flex items-center justify-center flex-shrink-0 mt-0.5">3</div>
+            <div>
+              <span class="font-bold text-slate-900">Tap "Add to Home Screen"</span>
+              <p class="text-slate-500">Scroll down the share sheet and tap <strong class="text-slate-800">"Add to Home Screen"</strong> (with the <span class="inline-block px-1 bg-white border border-slate-300 rounded text-[11px]">+</span> icon).</p>
+            </div>
+          </div>
+
+          <div class="flex items-start gap-2.5">
+            <div class="w-6 h-6 rounded-full bg-blue-600 text-white font-black text-xs flex items-center justify-center flex-shrink-0 mt-0.5">4</div>
+            <div>
+              <span class="font-bold text-slate-900">Tap "Add"</span>
+              <p class="text-slate-500">Tap <strong>Add</strong> in the top-right corner. PlateFlow will appear right on your iPhone home screen!</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="bg-emerald-50 border border-emerald-200 rounded-xl p-3 text-xs text-emerald-800 flex items-center gap-2">
+          <i data-lucide="check-circle-2" class="w-4 h-4 text-emerald-600 flex-shrink-0"></i>
+          <span>Once added, it launches in full-screen standalone mode without any browser URL bar or buttons!</span>
+        </div>
+      </div>
+
+      <!-- Android Instructions -->
+      <div id="install-guide-android" class="hidden space-y-3">
+        <div class="p-3 bg-blue-50/60 rounded-xl border border-blue-100 text-xs text-slate-700 space-y-2.5">
+          <div class="flex items-start gap-2.5">
+            <div class="w-6 h-6 rounded-full bg-blue-600 text-white font-black text-xs flex items-center justify-center flex-shrink-0 mt-0.5">1</div>
+            <div>
+              <span class="font-bold text-slate-900">Tap the Top Button or Menu</span>
+              <p class="text-slate-500">Tap <strong>"Add to Home Screen Now"</strong> above, OR tap Chrome's <strong>three dots menu (⋮)</strong> in the top-right corner.</p>
+            </div>
+          </div>
+
+          <div class="flex items-start gap-2.5">
+            <div class="w-6 h-6 rounded-full bg-blue-600 text-white font-black text-xs flex items-center justify-center flex-shrink-0 mt-0.5">2</div>
+            <div>
+              <span class="font-bold text-slate-900">Select "Install App"</span>
+              <p class="text-slate-500">In the menu, tap <strong>"Install App"</strong> (or <strong>"Add to Home screen"</strong>).</p>
+            </div>
+          </div>
+
+          <div class="flex items-start gap-2.5">
+            <div class="w-6 h-6 rounded-full bg-blue-600 text-white font-black text-xs flex items-center justify-center flex-shrink-0 mt-0.5">3</div>
+            <div>
+              <span class="font-bold text-slate-900">Confirm Install</span>
+              <p class="text-slate-500">Tap <strong>Install</strong> when prompted. The app icon will be added to your phone's app drawer and home screen.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="bg-indigo-50 border border-indigo-200 rounded-xl p-3 text-xs text-indigo-800 flex items-center gap-2">
+          <i data-lucide="shield-check" class="w-4 h-4 text-indigo-600 flex-shrink-0"></i>
+          <span>Works offline with fast instant loading directly from your phone!</span>
+        </div>
+      </div>
+
+      <div class="mt-4 pt-3 border-t text-center">
+        <button onclick="closeInstallModal()" class="w-full py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-xl transition">
+          Close
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- APPLICATION SCRIPT & STORAGE               -->
+  <!-- ========================================== -->
+  <script>
+    // Storage Keys
+    const ORDERS_KEY = 'plateflow_orders';
+    const MENU_KEY = 'plateflow_menu';
+    const CLIENTS_KEY = 'plateflow_clients';
+    const EXPENSES_KEY = 'plateflow_expenses';
+    const CLOUD_CONFIG_KEY = 'plateflow_cloud_config';
+
+    // Application State
+    let currentTab = 'orders';
+    let selectedDate = new Date();
+    let currentDetailOrder = null;
+    let menuCategoryFilter = 'all';
+    let expenseCategoryFilter = 'all';
+
+    // Cloud Sync State
+    let cloudDb = null;
+    let cloudUnsubs = [];
+    let isCloudConnected = false;
+    let cloudStoreId = '';
+
+    // Initial Data Collections
+    let orders = [];
+    let menuItems = [];
+    let clients = [];
+    let expenses = [];
+
+    function initData() {
+      const today = formatDate(new Date());
+
+      // 1. Menu Items Seed
+      const storedMenu = localStorage.getItem(MENU_KEY);
+      if (storedMenu) {
+        menuItems = JSON.parse(storedMenu);
+      } else {
+        menuItems = [
+          { id: 1, name: 'Hyderabadi Chicken Biryani', category: 'Biryani', price: 280, description: 'Long-grain dum biryani with raita and mirchi ka salan.' },
+          { id: 2, name: 'Mutton Dum Biryani', category: 'Biryani', price: 380, description: 'Tender marinated mutton slow cooked with saffron basmati.' },
+          { id: 3, name: 'Paneer Butter Masala Plate', category: 'Main Course', price: 220, description: 'Rich tomato cashew gravy with 3 butter naans & jeera rice.' },
+          { id: 4, name: 'Chicken Tikka Plate', category: 'Starters', price: 260, description: '6 pieces tandoori chargrilled chicken with mint dip & salad.' },
+          { id: 5, name: 'Butter Naan & Dal Makhani', category: 'Breads & Rice', price: 180, description: 'Creamy 12-hour black lentils with freshly baked naans.' },
+          { id: 6, name: 'Gulab Jamun (2 pcs)', category: 'Desserts', price: 70, description: 'Warm khoya dumplings soaked in rose cardamom sugar syrup.' }
+        ];
+        localStorage.setItem(MENU_KEY, JSON.stringify(menuItems));
+      }
+
+      // 2. Clients Seed
+      const storedClients = localStorage.getItem(CLIENTS_KEY);
+      if (storedClients) {
+        clients = JSON.parse(storedClients);
+      } else {
+        clients = [
+          { id: 1, name: 'John Doe', phone: '+91 9876543210', address: '402 Sunrise Apt, Sector 12', notes: 'Prefers deliveries before 1 PM' },
+          { id: 2, name: 'Anita Sharma', phone: '+91 9822334455', address: 'B-104 Garden View, Green Park', notes: 'Regular weekend lunch party client' },
+          { id: 3, name: 'Rahul Verma', phone: '+91 9711223344', address: '78 Ring Road, Tech Hub Plaza', notes: 'Corporate bulk orders on Fridays' },
+          { id: 4, name: 'Priya Patel', phone: '+91 9988776655', address: '12 Crystal Heights, Marine Dr', notes: 'Contactless delivery preferred' }
+        ];
+        localStorage.setItem(CLIENTS_KEY, JSON.stringify(clients));
+      }
+
+      // 3. Orders Seed
+      const storedOrders = localStorage.getItem(ORDERS_KEY);
+      if (storedOrders) {
+        orders = JSON.parse(storedOrders);
+      } else {
+        orders = [
+          {
+            id: 1,
+            clientName: 'John Doe',
+            clientPhone: '+91 9876543210',
+            clientAddress: '402 Sunrise Apt, Sector 12',
+            item: 'Hyderabadi Chicken Biryani',
+            plateCount: 15,
+            platePrice: 280,
+            amountPaid: 4200,
+            date: today
+          },
+          {
+            id: 2,
+            clientName: 'Anita Sharma',
+            clientPhone: '+91 9822334455',
+            clientAddress: 'B-104 Garden View, Green Park',
+            item: 'Paneer Butter Masala Plate',
+            plateCount: 8,
+            platePrice: 220,
+            amountPaid: 1000,
+            date: today
+          },
+          {
+            id: 3,
+            clientName: 'Rahul Verma',
+            clientPhone: '+91 9711223344',
+            clientAddress: '78 Ring Road, Tech Hub Plaza',
+            item: 'Mutton Dum Biryani',
+            plateCount: 20,
+            platePrice: 380,
+            amountPaid: 0,
+            date: today
+          }
+        ];
+        localStorage.setItem(ORDERS_KEY, JSON.stringify(orders));
+      }
+
+      // 4. Expenses Seed
+      const storedExpenses = localStorage.getItem(EXPENSES_KEY);
+      if (storedExpenses) {
+        expenses = JSON.parse(storedExpenses);
+      } else {
+        expenses = [
+          { id: 1, title: 'Basmati Rice & Premium Spices', category: 'Ingredients', amount: 2400, date: today, notes: 'Wholesale grain mart, Bill #104' },
+          { id: 2, title: 'Fresh Chicken & Mutton Delivery', category: 'Ingredients', amount: 3800, date: today, notes: 'City fresh meat supply' },
+          { id: 3, title: 'Eco Meal Trays & Foil Boxes', category: 'Utensils & Packaging', amount: 650, date: today, notes: 'Packers hub' },
+          { id: 4, title: 'Fuel for Delivery Bike', category: 'Fuel & Delivery', amount: 350, date: today, notes: 'Daily delivery routes' }
+        ];
+        localStorage.setItem(EXPENSES_KEY, JSON.stringify(expenses));
+      }
+
+      populateDatalists();
+    }
+
+    function populateDatalists() {
+      // Menu Datalist for Order creation
+      const menuDatalist = document.getElementById('menu-datalist');
+      if (menuDatalist) {
+        menuDatalist.innerHTML = menuItems.map(m => `<option value="${escapeHtml(m.name)}">₹${m.price} - ${escapeHtml(m.category)}</option>`).join('');
+      }
+
+      // Clients Datalist for Order creation
+      const clientDatalist = document.getElementById('client-datalist');
+      if (clientDatalist) {
+        clientDatalist.innerHTML = clients.map(c => `<option value="${escapeHtml(c.name)}">${c.phone ? escapeHtml(c.phone) : ''}</option>`).join('');
+      }
+    }
+
+    function syncDocToCloud(collectionName, docId, data) {
+      if (isCloudConnected && cloudDb && cloudStoreId) {
+        try {
+          cloudDb.collection('stores').doc(cloudStoreId).collection(collectionName).doc(String(docId)).set(data);
+        } catch (e) {
+          console.error(`Error syncing ${collectionName} to cloud:`, e);
+        }
+      }
+    }
+
+    function deleteDocFromCloud(collectionName, docId) {
+      if (isCloudConnected && cloudDb && cloudStoreId) {
+        try {
+          cloudDb.collection('stores').doc(cloudStoreId).collection(collectionName).doc(String(docId)).delete();
+        } catch (e) {
+          console.error(`Error deleting ${collectionName} from cloud:`, e);
+        }
+      }
+    }
+
+    function saveOrders() {
+      localStorage.setItem(ORDERS_KEY, JSON.stringify(orders));
+    }
+    function saveMenu() {
+      localStorage.setItem(MENU_KEY, JSON.stringify(menuItems));
+      populateDatalists();
+    }
+    function saveClientsList() {
+      localStorage.setItem(CLIENTS_KEY, JSON.stringify(clients));
+      populateDatalists();
+    }
+    function saveExpenses() {
+      localStorage.setItem(EXPENSES_KEY, JSON.stringify(expenses));
+    }
+
+    // ==========================================
+    // CLOUD SYNC ENGINE (Firebase Firestore)
+    // ==========================================
+    function openCloudModal() {
+      const stored = localStorage.getItem(CLOUD_CONFIG_KEY);
+      if (stored) {
+        try {
+          const parsed = JSON.parse(stored);
+          document.getElementById('cloud-store-id').value = parsed.storeId || '';
+          document.getElementById('cloud-firebase-config').value = JSON.stringify(parsed.config, null, 2);
+        } catch (e) {}
+      }
+      updateCloudUI();
+      document.getElementById('cloud-modal').classList.remove('hidden');
+      lucide.createIcons();
+    }
+
+    function closeCloudModal() {
+      document.getElementById('cloud-modal').classList.add('hidden');
+    }
+
+    function updateCloudUI() {
+      const dot = document.getElementById('cloud-status-indicator');
+      const text = document.getElementById('cloud-status-text');
+      const bannerDot = document.getElementById('cloud-banner-dot');
+      const bannerTitle = document.getElementById('cloud-banner-title');
+      const bannerSub = document.getElementById('cloud-banner-sub');
+      const activeActions = document.getElementById('cloud-active-actions');
+
+      if (isCloudConnected) {
+        if (dot) dot.className = 'w-2 h-2 rounded-full bg-emerald-500 animate-pulse';
+        if (text) { text.innerText = 'Live Sync'; text.className = 'text-[11px] font-bold hidden sm:inline text-emerald-700'; }
+        if (bannerDot) bannerDot.className = 'w-3 h-3 rounded-full bg-emerald-500';
+        if (bannerTitle) bannerTitle.innerHTML = `<span class="text-emerald-700">🟢 Cloud Live Sync Connected (${escapeHtml(cloudStoreId)})</span>`;
+        if (bannerSub) bannerSub.innerText = 'Real-time synchronization is active! Changes on any phone update immediately.';
+        if (activeActions) activeActions.classList.remove('hidden');
+      } else {
+        if (dot) dot.className = 'w-2 h-2 rounded-full bg-slate-400';
+        if (text) { text.innerText = 'Sync'; text.className = 'text-[11px] font-bold hidden sm:inline text-slate-600'; }
+        if (bannerDot) bannerDot.className = 'w-3 h-3 rounded-full bg-slate-400';
+        if (bannerTitle) bannerTitle.innerText = 'Local Mode (Offline)';
+        if (bannerSub) bannerSub.innerText = 'Data is saved only on this phone. Connect Firebase to sync across devices in real time.';
+        if (activeActions) activeActions.classList.add('hidden');
+      }
+    }
+
+    function initCloudSync() {
+      const stored = localStorage.getItem(CLOUD_CONFIG_KEY);
+      if (!stored) {
+        updateCloudUI();
+        return;
+      }
+      try {
+        const parsed = JSON.parse(stored);
+        if (parsed.config && parsed.storeId) {
+          connectToFirebase(parsed.config, parsed.storeId, false);
+        }
+      } catch (err) {
+        console.error('Failed to parse cloud config:', err);
+      }
+    }
+
+    function connectToFirebase(firebaseConfig, storeId, showAlert = true) {
+      try {
+        if (typeof firebase === 'undefined') {
+          throw new Error('Firebase library not loaded. Check internet connection.');
+        }
+        if (!firebase.apps.length) {
+          firebase.initializeApp(firebaseConfig);
+        }
+        cloudDb = firebase.firestore();
+        cloudStoreId = storeId.trim().toLowerCase().replace(/[^a-z0-9-_]/g, '_');
+        isCloudConnected = true;
+
+        // Clean previous listeners
+        cloudUnsubs.forEach(unsub => unsub && unsub());
+        cloudUnsubs = [];
+
+        // 1. Listen to Orders in real time
+        const unSubOrders = cloudDb.collection('stores').doc(cloudStoreId).collection('orders').onSnapshot(snap => {
+          if (!snap.empty) {
+            const list = [];
+            snap.forEach(d => list.push(d.data()));
+            orders = list.sort((a,b) => (b.id || 0) - (a.id || 0));
+            localStorage.setItem(ORDERS_KEY, JSON.stringify(orders));
+            if (currentTab === 'orders') renderOrders();
+            if (currentTab === 'clients') renderClients();
+            if (currentTab === 'trends') renderTrends();
+          }
+        }, err => console.error('Orders sync error:', err));
+        cloudUnsubs.push(unSubOrders);
+
+        // 2. Listen to Menu in real time
+        const unSubMenu = cloudDb.collection('stores').doc(cloudStoreId).collection('menu').onSnapshot(snap => {
+          if (!snap.empty) {
+            const list = [];
+            snap.forEach(d => list.push(d.data()));
+            menuItems = list;
+            localStorage.setItem(MENU_KEY, JSON.stringify(menuItems));
+            populateDatalists();
+            if (currentTab === 'menu') renderMenu();
+          }
+        }, err => console.error('Menu sync error:', err));
+        cloudUnsubs.push(unSubMenu);
+
+        // 3. Listen to Clients in real time
+        const unSubClients = cloudDb.collection('stores').doc(cloudStoreId).collection('clients').onSnapshot(snap => {
+          if (!snap.empty) {
+            const list = [];
+            snap.forEach(d => list.push(d.data()));
+            clients = list;
+            localStorage.setItem(CLIENTS_KEY, JSON.stringify(clients));
+            populateDatalists();
+            if (currentTab === 'clients') renderClients();
+          }
+        }, err => console.error('Clients sync error:', err));
+        cloudUnsubs.push(unSubClients);
+
+        // 4. Listen to Expenses in real time
+        const unSubExpenses = cloudDb.collection('stores').doc(cloudStoreId).collection('expenses').onSnapshot(snap => {
+          if (!snap.empty) {
+            const list = [];
+            snap.forEach(d => list.push(d.data()));
+            expenses = list.sort((a,b) => (b.id || 0) - (a.id || 0));
+            localStorage.setItem(EXPENSES_KEY, JSON.stringify(expenses));
+            if (currentTab === 'expenses') renderExpenses();
+            if (currentTab === 'trends') renderTrends();
+          }
+        }, err => console.error('Expenses sync error:', err));
+        cloudUnsubs.push(unSubExpenses);
+
+        updateCloudUI();
+        if (showAlert) {
+          alert('Connected to Firebase! All changes will now sync live across your devices.');
+          closeCloudModal();
+        }
+      } catch (e) {
+        console.error('Firebase connection error:', e);
+        isCloudConnected = false;
+        updateCloudUI();
+        if (showAlert) alert('Could not connect to Firebase: ' + e.message);
+      }
+    }
+
+    function saveCloudConfig(e) {
+      e.preventDefault();
+      const rawStoreId = document.getElementById('cloud-store-id').value.trim();
+      const rawConfig = document.getElementById('cloud-firebase-config').value.trim();
+
+      if (!rawStoreId || !rawConfig) {
+        alert('Please provide both Store Code and Firebase Config.');
+        return;
+      }
+
+      let parsedConfig = null;
+      try {
+        let cleanConfig = rawConfig;
+        if (cleanConfig.includes('{')) {
+          cleanConfig = cleanConfig.substring(cleanConfig.indexOf('{'), cleanConfig.lastIndexOf('}') + 1);
+        }
+        cleanConfig = cleanConfig.replace(/(\w+)\s*:/g, '"$1":').replace(/'/g, '"').replace(/,\s*}/g, '}');
+        parsedConfig = JSON.parse(cleanConfig);
+      } catch (err) {
+        try {
+          parsedConfig = (new Function(`return ${rawConfig}`))();
+        } catch (err2) {
+          alert('Invalid Firebase configuration format. Please paste valid JSON or JavaScript object.');
+          return;
+        }
+      }
+
+      localStorage.setItem(CLOUD_CONFIG_KEY, JSON.stringify({
+        storeId: rawStoreId,
+        config: parsedConfig
+      }));
+
+      connectToFirebase(parsedConfig, rawStoreId, true);
+    }
+
+    function disconnectCloud() {
+      if (confirm('Disconnect from Cloud? The app will return to saving data on this device only.')) {
+        cloudUnsubs.forEach(unsub => unsub && unsub());
+        cloudUnsubs = [];
+        cloudDb = null;
+        isCloudConnected = false;
+        localStorage.removeItem(CLOUD_CONFIG_KEY);
+        updateCloudUI();
+        closeCloudModal();
+      }
+    }
+
+    async function uploadLocalDataToCloud() {
+      if (!isCloudConnected || !cloudDb || !cloudStoreId) {
+        alert('Please connect to Firebase first.');
+        return;
+      }
+      try {
+        const batch = cloudDb.batch();
+        orders.forEach(o => {
+          const docRef = cloudDb.collection('stores').doc(cloudStoreId).collection('orders').doc(String(o.id));
+          batch.set(docRef, o);
+        });
+        menuItems.forEach(m => {
+          const docRef = cloudDb.collection('stores').doc(cloudStoreId).collection('menu').doc(String(m.id));
+          batch.set(docRef, m);
+        });
+        clients.forEach(c => {
+          const docRef = cloudDb.collection('stores').doc(cloudStoreId).collection('clients').doc(String(c.id));
+          batch.set(docRef, c);
+        });
+        expenses.forEach(e => {
+          const docRef = cloudDb.collection('stores').doc(cloudStoreId).collection('expenses').doc(String(e.id));
+          batch.set(docRef, e);
+        });
+        await batch.commit();
+        alert('All local orders, menu items, clients, and expenses uploaded to Cloud successfully!');
+      } catch (err) {
+        alert('Error uploading to Cloud: ' + err.message);
+      }
+    }
+
+    function formatDate(d) {
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    }
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str).replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
+    }
+
+    // ==========================================
+    // TAB SWITCHING LOGIC
+    // ==========================================
+    function switchTab(tab) {
+      currentTab = tab;
+
+      // Tab Sections
+      const tabs = ['orders', 'menu', 'clients', 'expenses', 'trends'];
+      tabs.forEach(t => {
+        const el = document.getElementById(`tab-${t}`);
+        if (el) {
+          if (t === tab) el.classList.remove('hidden');
+          else el.classList.add('hidden');
+        }
+
+        // Mobile Nav Item
+        const navEl = document.getElementById(`nav-${t}`);
+        if (navEl) {
+          if (t === tab) {
+            navEl.classList.remove('text-slate-400', 'font-medium');
+            navEl.classList.add('text-blue-600', 'font-bold');
+          } else {
+            navEl.classList.remove('text-blue-600', 'font-bold');
+            navEl.classList.add('text-slate-400', 'font-medium');
+          }
+        }
+
+        // Desktop Nav Item
+        const deskEl = document.getElementById(`desk-nav-${t}`);
+        if (deskEl) {
+          if (t === tab) {
+            deskEl.className = 'px-3 py-1.5 rounded-lg transition bg-white text-blue-700 shadow-2xs font-bold';
+          } else {
+            deskEl.className = 'px-3 py-1.5 rounded-lg transition hover:text-slate-900 font-semibold';
+          }
+        }
+      });
+
+      // Show/hide Date Navigator (only relevant for Orders)
+      const dateBar = document.getElementById('date-navigator-bar');
+      if (dateBar) {
+        if (tab === 'orders') dateBar.classList.remove('hidden');
+        else dateBar.classList.add('hidden');
+      }
+
+      // Contextual Header updates
+      const badge = document.getElementById('header-page-badge');
+      const actionBtn = document.getElementById('header-action-btn');
+      const actionLabel = document.getElementById('header-action-label');
+      const actionIcon = document.getElementById('header-action-icon');
+
+      if (tab === 'orders') {
+        badge.innerText = 'Orders';
+        badge.className = 'bg-blue-50 text-blue-700 text-[10px] font-bold px-1.5 py-0.5 rounded border border-blue-200';
+        actionBtn.className = 'bg-blue-600 hover:bg-blue-700 active:scale-95 text-white font-semibold text-xs px-3 py-2 rounded-xl flex items-center space-x-1.5 shadow-sm transition';
+        actionLabel.innerText = 'New Order';
+        actionIcon.setAttribute('data-lucide', 'plus');
+        renderOrders();
+      } else if (tab === 'menu') {
+        badge.innerText = 'Menu';
+        badge.className = 'bg-amber-50 text-amber-700 text-[10px] font-bold px-1.5 py-0.5 rounded border border-amber-200';
+        actionBtn.className = 'bg-amber-600 hover:bg-amber-700 active:scale-95 text-white font-semibold text-xs px-3 py-2 rounded-xl flex items-center space-x-1.5 shadow-sm transition';
+        actionLabel.innerText = 'Add Dish';
+        actionIcon.setAttribute('data-lucide', 'plus');
+        renderMenu();
+      } else if (tab === 'clients') {
+        badge.innerText = 'Clients';
+        badge.className = 'bg-indigo-50 text-indigo-700 text-[10px] font-bold px-1.5 py-0.5 rounded border border-indigo-200';
+        actionBtn.className = 'bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white font-semibold text-xs px-3 py-2 rounded-xl flex items-center space-x-1.5 shadow-sm transition';
+        actionLabel.innerText = 'Add Client';
+        actionIcon.setAttribute('data-lucide', 'user-plus');
+        renderClients();
+      } else if (tab === 'expenses') {
+        badge.innerText = 'Expenses';
+        badge.className = 'bg-rose-50 text-rose-700 text-[10px] font-bold px-1.5 py-0.5 rounded border border-rose-200';
+        actionBtn.className = 'bg-rose-600 hover:bg-rose-700 active:scale-95 text-white font-semibold text-xs px-3 py-2 rounded-xl flex items-center space-x-1.5 shadow-sm transition';
+        actionLabel.innerText = 'Add Expense';
+        actionIcon.setAttribute('data-lucide', 'plus');
+        renderExpenses();
+      } else if (tab === 'trends') {
+        badge.innerText = 'Trends';
+        badge.className = 'bg-emerald-50 text-emerald-700 text-[10px] font-bold px-1.5 py-0.5 rounded border border-emerald-200';
+        actionBtn.className = 'bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-semibold text-xs px-3 py-2 rounded-xl flex items-center space-x-1.5 shadow-sm transition';
+        actionLabel.innerText = 'Share';
+        actionIcon.setAttribute('data-lucide', 'share-2');
+        renderTrends();
+      }
+
+      lucide.createIcons();
+    }
+
+    function handleHeaderAction() {
+      if (currentTab === 'orders') openNewOrderModal();
+      else if (currentTab === 'menu') openMenuModal();
+      else if (currentTab === 'clients') openClientModal();
+      else if (currentTab === 'expenses') openExpenseModal();
+      else if (currentTab === 'trends') shareFinancialReport();
+    }
+
+    // ==========================================
+    // 1. ORDERS LOGIC
+    // ==========================================
+    function updateDateUI() {
+      const todayStr = formatDate(new Date());
+      const selectedStr = formatDate(selectedDate);
+      const options = { weekday: 'short', month: 'short', day: 'numeric' };
+      const displayStr = selectedDate.toLocaleDateString(undefined, options);
+
+      document.getElementById('top-date-indicator').innerText = selectedStr === todayStr ? `Today (${displayStr})` : displayStr;
+      document.getElementById('date-display-label').innerText = selectedStr === todayStr ? 'Today' : displayStr;
+      document.getElementById('date-picker-input').value = selectedStr;
+    }
+
+    function changeDay(delta) {
+      selectedDate.setDate(selectedDate.getDate() + delta);
+      updateDateUI();
+      renderOrders();
+    }
+
+    function setToday() {
+      selectedDate = new Date();
+      updateDateUI();
+      renderOrders();
+    }
+
+    function onDatePicked(val) {
+      if (val) {
+        selectedDate = new Date(val + 'T00:00:00');
+        updateDateUI();
+        renderOrders();
+      }
+    }
+
+    function renderOrders() {
+      const selectedStr = formatDate(selectedDate);
+      const query = (document.getElementById('search-input')?.value || '').toLowerCase().trim();
+
+      const dayOrders = orders.filter(o => o.date === selectedStr && (
+        o.clientName.toLowerCase().includes(query) ||
+        (o.clientAddress || '').toLowerCase().includes(query) ||
+        (o.item || '').toLowerCase().includes(query)
+      ));
+
+      let totalPlates = 0, totalAmount = 0, totalCollected = 0, totalDue = 0;
+      dayOrders.forEach(o => {
+        const orderTotal = o.plateCount * o.platePrice;
+        const paid = o.amountPaid || 0;
+        const due = Math.max(0, orderTotal - paid);
+        totalPlates += o.plateCount;
+        totalAmount += orderTotal;
+        totalCollected += paid;
+        totalDue += due;
+      });
+
+      document.getElementById('stat-plates').innerText = totalPlates;
+      document.getElementById('stat-total').innerText = '₹' + totalAmount.toLocaleString();
+      document.getElementById('stat-collected').innerText = '₹' + totalCollected.toLocaleString();
+      document.getElementById('stat-due').innerText = '₹' + totalDue.toLocaleString();
+      document.getElementById('order-count-badge').innerText = `${dayOrders.length} order${dayOrders.length === 1 ? '' : 's'}`;
+
+      const container = document.getElementById('orders-container');
+      const emptyState = document.getElementById('empty-state');
+
+      if (dayOrders.length === 0) {
+        container.innerHTML = '';
+        emptyState.classList.remove('hidden');
+        return;
+      }
+      emptyState.classList.add('hidden');
+
+      // SINGLE ROW FORMAT: Client name | address | item | Plates
+      container.innerHTML = dayOrders.map(order => {
+        return `
+          <div onclick="openDetailsModal(${order.id})" class="bg-white hover:bg-slate-50 border border-slate-200/90 rounded-xl p-3 shadow-2xs cursor-pointer transition active:scale-[0.99] flex items-center gap-2">
+            <!-- 1. Client Name -->
+            <div class="flex-[1.2] min-w-0">
+              <span class="block text-xs font-bold text-slate-800 truncate">${escapeHtml(order.clientName)}</span>
+              ${order.clientPhone ? `<span class="block text-[10px] text-blue-600 truncate">${escapeHtml(order.clientPhone)}</span>` : ''}
+            </div>
+
+            <!-- 2. Address -->
+            <div class="flex-[1.3] min-w-0 px-1">
+              <span class="block text-xs text-slate-500 truncate">${escapeHtml(order.clientAddress || '—')}</span>
+            </div>
+
+            <!-- 3. Item -->
+            <div class="flex-[1.1] min-w-0 px-1">
+              <span class="block text-xs text-slate-700 font-medium truncate">${escapeHtml(order.item || 'Standard Plate')}</span>
+            </div>
+
+            <!-- 4. Plates -->
+            <div class="flex-[0.9] flex items-center justify-end">
+              <span class="bg-blue-50 text-blue-700 border border-blue-200 font-extrabold text-[11px] px-2.5 py-1 rounded-lg whitespace-nowrap shadow-2xs">
+                ${order.plateCount} Plates
+              </span>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      lucide.createIcons();
+    }
+
+    // Autocomplete helper for Order Modal
+    function onClientNameInput(name) {
+      const match = clients.find(c => c.name.toLowerCase() === name.toLowerCase().trim());
+      if (match) {
+        if (match.phone && !document.getElementById('client-phone').value) {
+          document.getElementById('client-phone').value = match.phone;
+        }
+        if (match.address && !document.getElementById('client-address').value) {
+          document.getElementById('client-address').value = match.address;
+        }
+      }
+    }
+
+    function onMenuItemSelected(dishName) {
+      const match = menuItems.find(m => m.name.toLowerCase() === dishName.toLowerCase().trim());
+      if (match) {
+        document.getElementById('plate-price').value = match.price;
+        calcTotals();
+      }
+    }
+
+    function openNewOrderModal(prefillClient = null, prefillDish = null) {
+      document.getElementById('modal-title').innerText = 'New Order';
+      document.getElementById('order-id').value = '';
+      document.getElementById('client-name').value = prefillClient ? prefillClient.name : '';
+      document.getElementById('client-phone').value = prefillClient ? (prefillClient.phone || '') : '';
+      document.getElementById('client-address').value = prefillClient ? (prefillClient.address || '') : '';
+      document.getElementById('plate-item').value = prefillDish ? prefillDish.name : '';
+      document.getElementById('plate-count').value = '1';
+      document.getElementById('plate-price').value = prefillDish ? prefillDish.price : '280';
+      document.getElementById('amount-paid').value = '0';
+      calcTotals();
+      populateDatalists();
+      document.getElementById('order-modal').classList.remove('hidden');
+    }
+
+    function closeModal() {
+      document.getElementById('order-modal').classList.add('hidden');
+    }
+
+    function calcTotals() {
+      const count = parseInt(document.getElementById('plate-count').value) || 0;
+      const price = parseFloat(document.getElementById('plate-price').value) || 0;
+      const paid = parseFloat(document.getElementById('amount-paid').value) || 0;
+
+      const total = count * price;
+      const due = Math.max(0, total - paid);
+
+      document.getElementById('order-calc-total').innerText = '₹' + total.toFixed(2);
+      document.getElementById('order-calc-due').innerText = '₹' + due.toFixed(2);
+    }
+
+    function saveOrder(e) {
+      e.preventDefault();
+      const id = document.getElementById('order-id').value;
+      const clientName = document.getElementById('client-name').value.trim();
+      const clientPhone = document.getElementById('client-phone').value.trim();
+      const plateItem = document.getElementById('plate-item').value.trim();
+      const clientAddress = document.getElementById('client-address').value.trim();
+      const plateCount = parseInt(document.getElementById('plate-count').value) || 1;
+      const platePrice = parseFloat(document.getElementById('plate-price').value) || 0;
+      const amountPaid = parseFloat(document.getElementById('amount-paid').value) || 0;
+
+      if (id) {
+        const idx = orders.findIndex(o => o.id == id);
+        if (idx !== -1) {
+          orders[idx].clientName = clientName;
+          orders[idx].clientPhone = clientPhone;
+          orders[idx].item = plateItem;
+          orders[idx].clientAddress = clientAddress;
+          orders[idx].plateCount = plateCount;
+          orders[idx].platePrice = platePrice;
+          orders[idx].amountPaid = amountPaid;
+          syncDocToCloud('orders', orders[idx].id, orders[idx]);
+        }
+      } else {
+        const newOrder = {
+          id: Date.now(),
+          clientName,
+          clientPhone,
+          item: plateItem,
+          clientAddress,
+          plateCount,
+          platePrice,
+          amountPaid,
+          date: formatDate(selectedDate)
+        };
+        orders.unshift(newOrder);
+        syncDocToCloud('orders', newOrder.id, newOrder);
+
+        // If client doesn't exist in Client directory, auto add them
+        const existing = clients.find(c => c.name.toLowerCase() === clientName.toLowerCase());
+        if (!existing) {
+          const newClient = {
+            id: Date.now() + 1,
+            name: clientName,
+            phone: clientPhone,
+            address: clientAddress,
+            notes: 'Added from order'
+          };
+          clients.push(newClient);
+          saveClientsList();
+          syncDocToCloud('clients', newClient.id, newClient);
+        }
+      }
+
+      saveOrders();
+      closeModal();
+      renderOrders();
+      if (currentTab === 'trends') renderTrends();
+    }
+
+    function openDetailsModal(id) {
+      const order = orders.find(o => o.id == id);
+      if (!order) return;
+      currentDetailOrder = order;
+
+      const total = order.plateCount * order.platePrice;
+      const due = Math.max(0, total - (order.amountPaid || 0));
+
+      document.getElementById('detail-client-name').innerText = order.clientName;
+      document.getElementById('detail-item').innerText = order.item || 'Standard Plate';
+      document.getElementById('detail-plates').innerText = `${order.plateCount} Plates`;
+      document.getElementById('detail-total').innerText = '₹' + total.toFixed(2);
+      document.getElementById('detail-due').innerText = '₹' + due.toFixed(2);
+      document.getElementById('detail-address').innerText = order.clientAddress || 'No address provided';
+
+      const callBtn = document.getElementById('btn-call');
+      if (order.clientPhone) {
+        callBtn.href = `tel:${order.clientPhone}`;
+        callBtn.classList.remove('opacity-40', 'pointer-events-none');
+      } else {
+        callBtn.href = '#';
+        callBtn.classList.add('opacity-40', 'pointer-events-none');
+      }
+
+      const dirBtn = document.getElementById('btn-directions');
+      if (order.clientAddress) {
+        dirBtn.href = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(order.clientAddress)}`;
+        dirBtn.classList.remove('opacity-40', 'pointer-events-none');
+      } else {
+        dirBtn.href = '#';
+        dirBtn.classList.add('opacity-40', 'pointer-events-none');
+      }
+
+      const payBtn = document.getElementById('btn-quick-pay');
+      if (due <= 0) {
+        payBtn.innerText = 'Paid in Full';
+        payBtn.classList.add('opacity-50', 'pointer-events-none');
+      } else {
+        payBtn.innerHTML = '<i data-lucide="check-circle" class="w-4 h-4"></i> Mark Paid';
+        payBtn.classList.remove('opacity-50', 'pointer-events-none');
+      }
+
+      document.getElementById('details-modal').classList.remove('hidden');
+      lucide.createIcons();
+    }
+
+    function closeDetailsModal() {
+      document.getElementById('details-modal').classList.add('hidden');
+    }
+
+    function quickCollect() {
+      if (!currentDetailOrder) return;
+      const total = currentDetailOrder.plateCount * currentDetailOrder.platePrice;
+      currentDetailOrder.amountPaid = total;
+      saveOrders();
+      syncDocToCloud('orders', currentDetailOrder.id, currentDetailOrder);
+      closeDetailsModal();
+      renderOrders();
+      if (currentTab === 'trends') renderTrends();
+    }
+
+    function editCurrentOrder() {
+      if (!currentDetailOrder) return;
+      closeDetailsModal();
+      document.getElementById('modal-title').innerText = 'Edit Order';
+      document.getElementById('order-id').value = currentDetailOrder.id;
+      document.getElementById('client-name').value = currentDetailOrder.clientName;
+      document.getElementById('client-phone').value = currentDetailOrder.clientPhone || '';
+      document.getElementById('plate-item').value = currentDetailOrder.item || '';
+      document.getElementById('client-address').value = currentDetailOrder.clientAddress || '';
+      document.getElementById('plate-count').value = currentDetailOrder.plateCount;
+      document.getElementById('plate-price').value = currentDetailOrder.platePrice;
+      document.getElementById('amount-paid').value = currentDetailOrder.amountPaid || 0;
+      calcTotals();
+      document.getElementById('order-modal').classList.remove('hidden');
+    }
+
+    function deleteCurrentOrder() {
+      if (!currentDetailOrder) return;
+      if (confirm(`Delete order for ${currentDetailOrder.clientName}?`)) {
+        const delId = currentDetailOrder.id;
+        orders = orders.filter(o => o.id !== delId);
+        saveOrders();
+        deleteDocFromCloud('orders', delId);
+        closeDetailsModal();
+        renderOrders();
+        if (currentTab === 'trends') renderTrends();
+      }
+    }
+
+    function shareReceipt() {
+      if (!currentDetailOrder) return;
+      const total = currentDetailOrder.plateCount * currentDetailOrder.platePrice;
+      const due = Math.max(0, total - (currentDetailOrder.amountPaid || 0));
+
+      const text = `🍽️ PlateFlow Order #${currentDetailOrder.id}
+Client: ${currentDetailOrder.clientName}
+Date: ${currentDetailOrder.date}
+Item: ${currentDetailOrder.item || 'Standard Plate'}
+Plates: ${currentDetailOrder.plateCount} Plates
+Total: ₹${total.toFixed(2)}
+Paid: ₹${(currentDetailOrder.amountPaid || 0).toFixed(2)}
+Balance Due: ₹${due.toFixed(2)}
+${currentDetailOrder.clientAddress ? `Address: ${currentDetailOrder.clientAddress}` : ''}`;
+
+      if (navigator.share) {
+        navigator.share({ title: 'Order Receipt', text }).catch(() => {});
+      } else {
+        navigator.clipboard.writeText(text);
+        alert('Receipt copied to clipboard!');
+      }
+    }
+
+    // ==========================================
+    // 2. MENU LOGIC
+    // ==========================================
+    function setMenuCategoryFilter(cat) {
+      menuCategoryFilter = cat;
+      document.querySelectorAll('.menu-cat-btn').forEach(btn => {
+        btn.className = 'menu-cat-btn px-3 py-1.5 rounded-full font-semibold bg-white border border-slate-200 text-slate-600 hover:bg-slate-100 whitespace-nowrap';
+      });
+      const activeBtn = document.getElementById(`menu-cat-${cat}`);
+      if (activeBtn) {
+        activeBtn.className = 'menu-cat-btn px-3 py-1.5 rounded-full font-bold bg-amber-600 text-white shadow-2xs whitespace-nowrap';
+      }
+      renderMenu();
+    }
+
+    function renderMenu() {
+      const query = (document.getElementById('menu-search-input')?.value || '').toLowerCase().trim();
+
+      const filtered = menuItems.filter(item => {
+        const matchesCategory = menuCategoryFilter === 'all' || item.category === menuCategoryFilter;
+        const matchesQuery = item.name.toLowerCase().includes(query) || (item.description || '').toLowerCase().includes(query) || item.category.toLowerCase().includes(query);
+        return matchesCategory && matchesQuery;
+      });
+
+      document.getElementById('menu-dish-count-badge').innerText = `${menuItems.length} dishes`;
+
+      const container = document.getElementById('menu-container');
+      const emptyState = document.getElementById('menu-empty-state');
+
+      if (filtered.length === 0) {
+        container.innerHTML = '';
+        emptyState.classList.remove('hidden');
+        return;
+      }
+      emptyState.classList.add('hidden');
+
+      container.innerHTML = filtered.map(item => `
+        <div class="bg-white border border-slate-200 rounded-2xl p-4 shadow-2xs hover:shadow-xs transition flex flex-col justify-between">
+          <div>
+            <div class="flex items-start justify-between gap-2">
+              <div>
+                <span class="text-[10px] font-bold uppercase tracking-wider text-amber-600 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-100">${escapeHtml(item.category)}</span>
+                <h3 class="text-sm font-bold text-slate-900 mt-1">${escapeHtml(item.name)}</h3>
+              </div>
+              <span class="text-base font-extrabold text-slate-900 whitespace-nowrap">₹${item.price}</span>
+            </div>
+            ${item.description ? `<p class="text-xs text-slate-500 mt-1.5 line-clamp-2">${escapeHtml(item.description)}</p>` : ''}
+          </div>
+
+          <div class="border-t border-slate-100 mt-3 pt-3 flex items-center justify-between">
+            <button onclick="quickOrderDish(${item.id})" class="bg-amber-50 hover:bg-amber-100 text-amber-700 text-xs font-bold px-2.5 py-1.5 rounded-lg flex items-center gap-1 transition">
+              <i data-lucide="plus" class="w-3.5 h-3.5"></i> Order This
+            </button>
+            <div class="flex items-center gap-1">
+              <button onclick="editMenuItem(${item.id})" class="p-1.5 text-slate-400 hover:text-blue-600 rounded-lg transition" title="Edit Dish">
+                <i data-lucide="edit-3" class="w-4 h-4"></i>
+              </button>
+              <button onclick="deleteMenuItem(${item.id})" class="p-1.5 text-slate-400 hover:text-rose-600 rounded-lg transition" title="Delete Dish">
+                <i data-lucide="trash-2" class="w-4 h-4"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+      `).join('');
+
+      lucide.createIcons();
+    }
+
+    function quickOrderDish(dishId) {
+      const dish = menuItems.find(m => m.id === dishId);
+      if (!dish) return;
+      switchTab('orders');
+      openNewOrderModal(null, dish);
+    }
+
+    function openMenuModal() {
+      document.getElementById('menu-modal-title').innerText = 'Add Menu Dish';
+      document.getElementById('menu-item-id').value = '';
+      document.getElementById('menu-name').value = '';
+      document.getElementById('menu-category').value = 'Main Course';
+      document.getElementById('menu-price').value = '250';
+      document.getElementById('menu-desc').value = '';
+      document.getElementById('menu-modal').classList.remove('hidden');
+    }
+
+    function closeMenuModal() {
+      document.getElementById('menu-modal').classList.add('hidden');
+    }
+
+    function editMenuItem(id) {
+      const item = menuItems.find(m => m.id === id);
+      if (!item) return;
+      document.getElementById('menu-modal-title').innerText = 'Edit Menu Dish';
+      document.getElementById('menu-item-id').value = item.id;
+      document.getElementById('menu-name').value = item.name;
+      document.getElementById('menu-category').value = item.category;
+      document.getElementById('menu-price').value = item.price;
+      document.getElementById('menu-desc').value = item.description || '';
+      document.getElementById('menu-modal').classList.remove('hidden');
+    }
+
+    function deleteMenuItem(id) {
+      const item = menuItems.find(m => m.id === id);
+      if (!item) return;
+      if (confirm(`Remove "${item.name}" from menu?`)) {
+        menuItems = menuItems.filter(m => m.id !== id);
+        saveMenu();
+        deleteDocFromCloud('menu', id);
+        renderMenu();
+      }
+    }
+
+    function saveMenuItem(e) {
+      e.preventDefault();
+      const id = document.getElementById('menu-item-id').value;
+      const name = document.getElementById('menu-name').value.trim();
+      const category = document.getElementById('menu-category').value;
+      const price = parseFloat(document.getElementById('menu-price').value) || 0;
+      const description = document.getElementById('menu-desc').value.trim();
+
+      let targetItem = null;
+      if (id) {
+        const idx = menuItems.findIndex(m => m.id == id);
+        if (idx !== -1) {
+          menuItems[idx].name = name;
+          menuItems[idx].category = category;
+          menuItems[idx].price = price;
+          menuItems[idx].description = description;
+          targetItem = menuItems[idx];
+        }
+      } else {
+        targetItem = {
+          id: Date.now(),
+          name,
+          category,
+          price,
+          description
+        };
+        menuItems.push(targetItem);
+      }
+
+      saveMenu();
+      if (targetItem) syncDocToCloud('menu', targetItem.id, targetItem);
+      closeMenuModal();
+      renderMenu();
+    }
+
+    // ==========================================
+    // 3. CLIENTS LOGIC
+    // ==========================================
+    function renderClients() {
+      const query = (document.getElementById('client-search-input')?.value || '').toLowerCase().trim();
+
+      const filtered = clients.filter(c => 
+        c.name.toLowerCase().includes(query) ||
+        (c.phone || '').toLowerCase().includes(query) ||
+        (c.address || '').toLowerCase().includes(query)
+      );
+
+      // Compute statistics
+      let totalOrders = 0;
+      let totalDue = 0;
+      const clientStats = {};
+
+      orders.forEach(o => {
+        const orderTotal = o.plateCount * o.platePrice;
+        const paid = o.amountPaid || 0;
+        const due = Math.max(0, orderTotal - paid);
+        totalOrders += 1;
+        totalDue += due;
+
+        const cName = o.clientName.toLowerCase();
+        if (!clientStats[cName]) {
+          clientStats[cName] = { count: 0, total: 0, due: 0 };
+        }
+        clientStats[cName].count += 1;
+        clientStats[cName].total += orderTotal;
+        clientStats[cName].due += due;
+      });
+
+      document.getElementById('client-stat-count').innerText = clients.length;
+      document.getElementById('client-stat-orders').innerText = totalOrders;
+      document.getElementById('client-stat-due').innerText = '₹' + totalDue.toLocaleString();
+
+      const container = document.getElementById('clients-container');
+      const emptyState = document.getElementById('clients-empty-state');
+
+      if (filtered.length === 0) {
+        container.innerHTML = '';
+        emptyState.classList.remove('hidden');
+        return;
+      }
+      emptyState.classList.add('hidden');
+
+      container.innerHTML = filtered.map(client => {
+        const stats = clientStats[client.name.toLowerCase()] || { count: 0, total: 0, due: 0 };
+        const hasDue = stats.due > 0;
+        const initials = client.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+
+        return `
+          <div class="bg-white border border-slate-200 rounded-2xl p-4 shadow-2xs hover:shadow-xs transition">
+            <div class="flex items-start justify-between gap-3">
+              <div class="flex items-start gap-3 min-w-0">
+                <div class="w-10 h-10 rounded-full bg-indigo-50 border border-indigo-100 text-indigo-700 font-extrabold text-xs flex items-center justify-center flex-shrink-0">
+                  ${initials}
+                </div>
+                <div class="min-w-0">
+                  <h3 class="text-sm font-bold text-slate-900 truncate">${escapeHtml(client.name)}</h3>
+                  ${client.phone ? `<p class="text-xs text-blue-600 font-semibold truncate mt-0.5">${escapeHtml(client.phone)}</p>` : ''}
+                  ${client.address ? `<p class="text-xs text-slate-500 truncate mt-0.5">${escapeHtml(client.address)}</p>` : ''}
+                </div>
+              </div>
+
+              <!-- Status Badge -->
+              <div class="text-right flex-shrink-0">
+                ${hasDue ? `
+                  <span class="bg-rose-50 text-rose-700 border border-rose-200 text-[10px] font-bold px-2 py-0.5 rounded-full inline-block">
+                    Due ₹${stats.due.toFixed(0)}
+                  </span>
+                ` : `
+                  <span class="bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-bold px-2 py-0.5 rounded-full inline-block">
+                    Paid Up
+                  </span>
+                `}
+                <span class="block text-[10px] text-slate-400 mt-1">${stats.count} order${stats.count === 1 ? '' : 's'}</span>
+              </div>
+            </div>
+
+            <!-- Client Action Buttons -->
+            <div class="border-t border-slate-100 mt-3 pt-3 flex items-center justify-between">
+              <div class="flex items-center gap-1.5">
+                ${client.phone ? `
+                  <a href="tel:${client.phone}" class="p-1.5 text-emerald-600 bg-emerald-50 hover:bg-emerald-100 rounded-lg text-xs font-semibold flex items-center gap-1 transition" title="Call">
+                    <i data-lucide="phone" class="w-3.5 h-3.5"></i>
+                  </a>
+                  <a href="https://wa.me/${client.phone.replace(/[^0-9]/g, '')}" target="_blank" class="p-1.5 text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-lg text-xs font-semibold flex items-center gap-1 transition" title="WhatsApp">
+                    <i data-lucide="message-square" class="w-3.5 h-3.5"></i>
+                  </a>
+                ` : ''}
+                ${client.address ? `
+                  <a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(client.address)}" target="_blank" class="p-1.5 text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg text-xs font-semibold flex items-center gap-1 transition" title="Maps">
+                    <i data-lucide="map-pin" class="w-3.5 h-3.5"></i>
+                  </a>
+                ` : ''}
+                <button onclick="newOrderForClient(${client.id})" class="px-2.5 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg text-xs font-bold flex items-center gap-1 transition">
+                  <i data-lucide="plus" class="w-3.5 h-3.5"></i> Order
+                </button>
+              </div>
+
+              <div class="flex items-center gap-1">
+                <button onclick="editClient(${client.id})" class="p-1.5 text-slate-400 hover:text-blue-600 rounded-lg transition" title="Edit Client">
+                  <i data-lucide="edit-3" class="w-4 h-4"></i>
+                </button>
+                <button onclick="deleteClient(${client.id})" class="p-1.5 text-slate-400 hover:text-rose-600 rounded-lg transition" title="Delete Client">
+                  <i data-lucide="trash-2" class="w-4 h-4"></i>
+                </button>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      lucide.createIcons();
+    }
+
+    function newOrderForClient(clientId) {
+      const client = clients.find(c => c.id === clientId);
+      if (!client) return;
+      switchTab('orders');
+      openNewOrderModal(client, null);
+    }
+
+    function openClientModal() {
+      document.getElementById('client-modal-title').innerText = 'Add New Client';
+      document.getElementById('client-modal-id').value = '';
+      document.getElementById('client-modal-name').value = '';
+      document.getElementById('client-modal-phone').value = '';
+      document.getElementById('client-modal-address').value = '';
+      document.getElementById('client-modal-notes').value = '';
+      document.getElementById('client-modal').classList.remove('hidden');
+    }
+
+    function closeClientModal() {
+      document.getElementById('client-modal').classList.add('hidden');
+    }
+
+    function editClient(id) {
+      const client = clients.find(c => c.id === id);
+      if (!client) return;
+      document.getElementById('client-modal-title').innerText = 'Edit Client';
+      document.getElementById('client-modal-id').value = client.id;
+      document.getElementById('client-modal-name').value = client.name;
+      document.getElementById('client-modal-phone').value = client.phone || '';
+      document.getElementById('client-modal-address').value = client.address || '';
+      document.getElementById('client-modal-notes').value = client.notes || '';
+      document.getElementById('client-modal').classList.remove('hidden');
+    }
+
+    function deleteClient(id) {
+      const client = clients.find(c => c.id === id);
+      if (!client) return;
+      if (confirm(`Delete client "${client.name}"?`)) {
+        clients = clients.filter(c => c.id !== id);
+        saveClientsList();
+        deleteDocFromCloud('clients', id);
+        renderClients();
+      }
+    }
+
+    function saveClient(e) {
+      e.preventDefault();
+      const id = document.getElementById('client-modal-id').value;
+      const name = document.getElementById('client-modal-name').value.trim();
+      const phone = document.getElementById('client-modal-phone').value.trim();
+      const address = document.getElementById('client-modal-address').value.trim();
+      const notes = document.getElementById('client-modal-notes').value.trim();
+
+      let targetClient = null;
+      if (id) {
+        const idx = clients.findIndex(c => c.id == id);
+        if (idx !== -1) {
+          clients[idx].name = name;
+          clients[idx].phone = phone;
+          clients[idx].address = address;
+          clients[idx].notes = notes;
+          targetClient = clients[idx];
+        }
+      } else {
+        targetClient = {
+          id: Date.now(),
+          name,
+          phone,
+          address,
+          notes
+        };
+        clients.push(targetClient);
+      }
+
+      saveClientsList();
+      if (targetClient) syncDocToCloud('clients', targetClient.id, targetClient);
+      closeClientModal();
+      renderClients();
+    }
+
+    // ==========================================
+    // 4. EXPENSES LOGIC
+    // ==========================================
+    function setExpenseCategoryFilter(cat) {
+      expenseCategoryFilter = cat;
+      document.querySelectorAll('.exp-cat-btn').forEach(btn => {
+        btn.className = 'exp-cat-btn px-3 py-1.5 rounded-full font-semibold bg-white border border-slate-200 text-slate-600 hover:bg-slate-100 whitespace-nowrap';
+      });
+      const activeBtn = document.getElementById(`exp-cat-${cat}`);
+      if (activeBtn) {
+        activeBtn.className = 'exp-cat-btn px-3 py-1.5 rounded-full font-bold bg-rose-600 text-white shadow-2xs whitespace-nowrap';
+      }
+      renderExpenses();
+    }
+
+    function renderExpenses() {
+      const filtered = expenses.filter(exp => {
+        return expenseCategoryFilter === 'all' || exp.category === expenseCategoryFilter;
+      });
+
+      const totalSpent = filtered.reduce((acc, curr) => acc + (curr.amount || 0), 0);
+      document.getElementById('expense-total-display').innerText = '₹' + totalSpent.toLocaleString();
+      document.getElementById('expense-count-badge').innerText = `${filtered.length} expense${filtered.length === 1 ? '' : 's'} logged`;
+
+      const container = document.getElementById('expenses-container');
+      const emptyState = document.getElementById('expenses-empty-state');
+
+      if (filtered.length === 0) {
+        container.innerHTML = '';
+        emptyState.classList.remove('hidden');
+        return;
+      }
+      emptyState.classList.add('hidden');
+
+      container.innerHTML = filtered.map(exp => `
+        <div class="bg-white border border-slate-200 rounded-xl p-3 shadow-2xs flex items-center justify-between gap-3">
+          <div class="min-w-0">
+            <div class="flex items-center gap-2">
+              <span class="text-[10px] font-bold text-rose-700 bg-rose-50 border border-rose-100 px-2 py-0.5 rounded-md">${escapeHtml(exp.category)}</span>
+              <span class="text-[11px] text-slate-400 font-semibold">${escapeHtml(exp.date)}</span>
+            </div>
+            <h4 class="text-xs font-bold text-slate-800 mt-1 truncate">${escapeHtml(exp.title)}</h4>
+            ${exp.notes ? `<p class="text-[11px] text-slate-500 truncate mt-0.5">${escapeHtml(exp.notes)}</p>` : ''}
+          </div>
+
+          <div class="flex items-center gap-2 flex-shrink-0">
+            <span class="text-sm font-black text-rose-600">₹${exp.amount.toLocaleString()}</span>
+            <div class="flex items-center">
+              <button onclick="editExpense(${exp.id})" class="p-1 text-slate-400 hover:text-blue-600 rounded transition" title="Edit">
+                <i data-lucide="edit-3" class="w-3.5 h-3.5"></i>
+              </button>
+              <button onclick="deleteExpense(${exp.id})" class="p-1 text-slate-400 hover:text-rose-600 rounded transition" title="Delete">
+                <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+      `).join('');
+
+      lucide.createIcons();
+    }
+
+    function openExpenseModal() {
+      document.getElementById('expense-modal-title').innerText = 'Add New Expense';
+      document.getElementById('expense-modal-id').value = '';
+      document.getElementById('expense-title').value = '';
+      document.getElementById('expense-category').value = 'Ingredients';
+      document.getElementById('expense-amount').value = '';
+      document.getElementById('expense-date').value = formatDate(new Date());
+      document.getElementById('expense-notes').value = '';
+      document.getElementById('expense-modal').classList.remove('hidden');
+    }
+
+    function closeExpenseModal() {
+      document.getElementById('expense-modal').classList.add('hidden');
+    }
+
+    function editExpense(id) {
+      const exp = expenses.find(e => e.id === id);
+      if (!exp) return;
+      document.getElementById('expense-modal-title').innerText = 'Edit Expense';
+      document.getElementById('expense-modal-id').value = exp.id;
+      document.getElementById('expense-title').value = exp.title;
+      document.getElementById('expense-category').value = exp.category;
+      document.getElementById('expense-amount').value = exp.amount;
+      document.getElementById('expense-date').value = exp.date || formatDate(new Date());
+      document.getElementById('expense-notes').value = exp.notes || '';
+      document.getElementById('expense-modal').classList.remove('hidden');
+    }
+
+    function deleteExpense(id) {
+      const exp = expenses.find(e => e.id === id);
+      if (!exp) return;
+      if (confirm(`Delete expense "${exp.title}"?`)) {
+        expenses = expenses.filter(e => e.id !== id);
+        saveExpenses();
+        deleteDocFromCloud('expenses', id);
+        renderExpenses();
+        if (currentTab === 'trends') renderTrends();
+      }
+    }
+
+    function saveExpense(e) {
+      e.preventDefault();
+      const id = document.getElementById('expense-modal-id').value;
+      const title = document.getElementById('expense-title').value.trim();
+      const category = document.getElementById('expense-category').value;
+      const amount = parseFloat(document.getElementById('expense-amount').value) || 0;
+      const date = document.getElementById('expense-date').value;
+      const notes = document.getElementById('expense-notes').value.trim();
+
+      let targetExp = null;
+      if (id) {
+        const idx = expenses.findIndex(e => e.id == id);
+        if (idx !== -1) {
+          expenses[idx].title = title;
+          expenses[idx].category = category;
+          expenses[idx].amount = amount;
+          expenses[idx].date = date;
+          expenses[idx].notes = notes;
+          targetExp = expenses[idx];
+        }
+      } else {
+        targetExp = {
+          id: Date.now(),
+          title,
+          category,
+          amount,
+          date,
+          notes
+        };
+        expenses.unshift(targetExp);
+      }
+
+      saveExpenses();
+      if (targetExp) syncDocToCloud('expenses', targetExp.id, targetExp);
+      closeExpenseModal();
+      renderExpenses();
+      if (currentTab === 'trends') renderTrends();
+    }
+
+    // ==========================================
+    // 5. FINANCIAL TRENDS LOGIC
+    // ==========================================
+    function renderTrends() {
+      // 1. Overall Metrics
+      let totalRevenue = 0;
+      let totalCollected = 0;
+      let totalDue = 0;
+      let totalPlates = 0;
+
+      orders.forEach(o => {
+        const orderTotal = o.plateCount * o.platePrice;
+        const paid = o.amountPaid || 0;
+        totalRevenue += orderTotal;
+        totalCollected += paid;
+        totalDue += Math.max(0, orderTotal - paid);
+        totalPlates += o.plateCount;
+      });
+
+      const totalExpenses = expenses.reduce((acc, curr) => acc + (curr.amount || 0), 0);
+      const netProfit = totalRevenue - totalExpenses;
+      const profitMargin = totalRevenue > 0 ? ((netProfit / totalRevenue) * 100).toFixed(1) : 0;
+
+      document.getElementById('trend-revenue').innerText = '₹' + totalRevenue.toLocaleString();
+      document.getElementById('trend-expenses').innerText = '₹' + totalExpenses.toLocaleString();
+      
+      const profitEl = document.getElementById('trend-profit');
+      profitEl.innerText = (netProfit >= 0 ? '+' : '') + '₹' + netProfit.toLocaleString();
+      if (netProfit >= 0) {
+        profitEl.className = 'text-xl font-black text-emerald-400';
+      } else {
+        profitEl.className = 'text-xl font-black text-rose-400';
+      }
+
+      document.getElementById('trend-margin').innerText = `${profitMargin}% margin`;
+      document.getElementById('trend-plates').innerText = totalPlates;
+      document.getElementById('trend-collected').innerText = '₹' + totalCollected.toLocaleString();
+      document.getElementById('trend-due').innerText = '₹' + totalDue.toLocaleString();
+
+      // 2. 7-Day Revenue vs Expense Activity Bar Chart
+      const chartContainer = document.getElementById('trend-chart-container');
+      const last7Days = [];
+      for (let i = 6; i >= 0; i--) {
+        const d = new Date();
+        d.setDate(d.getDate() - i);
+        last7Days.push(formatDate(d));
+      }
+
+      const dailyData = last7Days.map(dateStr => {
+        const dayRev = orders.filter(o => o.date === dateStr).reduce((a, b) => a + (b.plateCount * b.platePrice), 0);
+        const dayExp = expenses.filter(e => e.date === dateStr).reduce((a, b) => a + b.amount, 0);
+        const dObj = new Date(dateStr + 'T00:00:00');
+        const dayName = dObj.toLocaleDateString(undefined, { weekday: 'short' });
+        return { dateStr, dayName, dayRev, dayExp };
+      });
+
+      const maxVal = Math.max(1, ...dailyData.map(d => Math.max(d.dayRev, d.dayExp)));
+
+      chartContainer.innerHTML = dailyData.map(d => {
+        const revPct = Math.round((d.dayRev / maxVal) * 100);
+        const expPct = Math.round((d.dayExp / maxVal) * 100);
+
+        return `
+          <div class="flex items-center gap-2 text-xs">
+            <span class="w-8 font-bold text-slate-500 text-[11px]">${d.dayName}</span>
+            <div class="flex-1 space-y-1">
+              <!-- Revenue Bar -->
+              <div class="w-full bg-slate-100 rounded-full h-2 overflow-hidden flex">
+                <div class="bg-blue-600 h-2 rounded-full transition-all duration-500" style="width: ${revPct}%"></div>
+              </div>
+              <!-- Expense Bar -->
+              <div class="w-full bg-slate-100 rounded-full h-2 overflow-hidden flex">
+                <div class="bg-rose-500 h-2 rounded-full transition-all duration-500" style="width: ${expPct}%"></div>
+              </div>
+            </div>
+            <div class="w-20 text-right font-semibold text-[10px] text-slate-600">
+              <span class="text-blue-600 font-bold">₹${d.dayRev.toLocaleString()}</span> / <span class="text-rose-500 font-bold">₹${d.dayExp.toLocaleString()}</span>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      // 3. Category Breakdown Bars
+      const categoryTotals = {};
+      expenses.forEach(e => {
+        categoryTotals[e.category] = (categoryTotals[e.category] || 0) + e.amount;
+      });
+
+      const categoryContainer = document.getElementById('trend-category-bars');
+      if (Object.keys(categoryTotals).length === 0) {
+        categoryContainer.innerHTML = '<p class="text-xs text-slate-400 text-center py-4">No expenses recorded yet.</p>';
+      } else {
+        const sortedCats = Object.entries(categoryTotals).sort((a, b) => b[1] - a[1]);
+        categoryContainer.innerHTML = sortedCats.map(([cat, amt]) => {
+          const pct = totalExpenses > 0 ? ((amt / totalExpenses) * 100).toFixed(0) : 0;
+          return `
+            <div>
+              <div class="flex justify-between items-center text-xs mb-1">
+                <span class="font-bold text-slate-700">${escapeHtml(cat)}</span>
+                <span class="font-extrabold text-slate-900">₹${amt.toLocaleString()} <span class="text-slate-400 font-normal">(${pct}%)</span></span>
+              </div>
+              <div class="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
+                <div class="bg-indigo-600 h-2 rounded-full" style="width: ${pct}%"></div>
+              </div>
+            </div>
+          `;
+        }).join('');
+      }
+
+      lucide.createIcons();
+    }
+
+    function shareFinancialReport() {
+      let totalRevenue = 0, totalCollected = 0, totalDue = 0, totalPlates = 0;
+      orders.forEach(o => {
+        const orderTotal = o.plateCount * o.platePrice;
+        totalRevenue += orderTotal;
+        totalCollected += (o.amountPaid || 0);
+        totalDue += Math.max(0, orderTotal - (o.amountPaid || 0));
+        totalPlates += o.plateCount;
+      });
+      const totalExpenses = expenses.reduce((acc, curr) => acc + (curr.amount || 0), 0);
+      const netProfit = totalRevenue - totalExpenses;
+      const profitMargin = totalRevenue > 0 ? ((netProfit / totalRevenue) * 100).toFixed(1) : 0;
+
+      const text = `📊 PlateFlow Financial Performance Report
+Generated: ${new Date().toLocaleDateString()}
+
+• Gross Revenue: ₹${totalRevenue.toLocaleString()}
+• Total Expenses: ₹${totalExpenses.toLocaleString()}
+• Net Profit: ₹${netProfit.toLocaleString()} (${profitMargin}% margin)
+• Plates Delivered: ${totalPlates}
+• Cash Collected: ₹${totalCollected.toLocaleString()}
+• Outstanding Due: ₹${totalDue.toLocaleString()}
+• Registered Clients: ${clients.length}
+• Menu Dishes: ${menuItems.length}`;
+
+      if (navigator.share) {
+        navigator.share({ title: 'PlateFlow Financial Report', text }).catch(() => {});
+      } else {
+        navigator.clipboard.writeText(text);
+        alert('Financial report copied to clipboard!');
+      }
+    }
+
+    // ==========================================
+    // INSTALL / PWA LOGIC
+    // ==========================================
+    let deferredPrompt = null;
+
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      deferredPrompt = e;
+      const nativeSec = document.getElementById('native-install-section');
+      if (nativeSec) nativeSec.classList.remove('hidden');
+    });
+
+    function openInstallModal() {
+      // Auto-detect iOS vs Android
+      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+      if (isIOS) {
+        switchInstallTab('ios');
+      } else {
+        switchInstallTab('android');
+      }
+      document.getElementById('install-modal').classList.remove('hidden');
+      lucide.createIcons();
+    }
+
+    function closeInstallModal() {
+      document.getElementById('install-modal').classList.add('hidden');
+    }
+
+    function switchInstallTab(platform) {
+      const iosTab = document.getElementById('install-tab-ios');
+      const androidTab = document.getElementById('install-tab-android');
+      const iosGuide = document.getElementById('install-guide-ios');
+      const androidGuide = document.getElementById('install-guide-android');
+
+      if (platform === 'ios') {
+        iosTab.className = 'py-2 rounded-lg bg-white text-blue-700 shadow-2xs transition';
+        androidTab.className = 'py-2 rounded-lg text-slate-600 hover:text-slate-900 transition';
+        iosGuide.classList.remove('hidden');
+        androidGuide.classList.add('hidden');
+      } else {
+        androidTab.className = 'py-2 rounded-lg bg-white text-blue-700 shadow-2xs transition';
+        iosTab.className = 'py-2 rounded-lg text-slate-600 hover:text-slate-900 transition';
+        androidGuide.classList.remove('hidden');
+        iosGuide.classList.add('hidden');
+      }
+    }
+
+    async function triggerPWAInstall() {
+      if (deferredPrompt) {
+        deferredPrompt.prompt();
+        const { outcome } = await deferredPrompt.userChoice;
+        if (outcome === 'accepted') {
+          closeInstallModal();
+        }
+        deferredPrompt = null;
+      } else {
+        // If beforeinstallprompt hasn't fired or on iOS, guide the user
+        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+        if (isIOS) {
+          switchInstallTab('ios');
+        } else {
+          switchInstallTab('android');
+          alert('To install: Tap the three dots (⋮) in Chrome and select "Install App" or "Add to Home Screen".');
+        }
+      }
+    }
+
+    // Register Service Worker
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js').catch(err => {
+          console.log('SW registration note:', err);
+        });
+      });
+    }
+
+    // ==========================================
+    // INITIALIZATION
+    // ==========================================
+    window.addEventListener('DOMContentLoaded', () => {
+      initData();
+      updateDateUI();
+      switchTab('orders');
+      initCloudSync();
+      lucide.createIcons();
+    });
+  </script>
+</body>
+</html>
